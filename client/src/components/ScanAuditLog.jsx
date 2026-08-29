@@ -20,7 +20,7 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { fetchScanAudit, rescanVideo } from '../api';
-import { formatSingaporeAuditTime } from '../utils/timeUtils';
+import { formatSingaporeAuditTime, parseUtcDate } from '../utils/timeUtils';
 
 export default function ScanAuditLog({ onRescanTriggered }) {
   const [auditData, setAuditData] = useState({
@@ -124,8 +124,8 @@ export default function ScanAuditLog({ onRescanTriggered }) {
       let valB = b[sortField];
 
       if (sortField === 'scanned_at') {
-        const timeA = a.scanned_at ? new Date(a.scanned_at).getTime() : (a.status === 'PROCESSING' ? 9999999999999 : 0);
-        const timeB = b.scanned_at ? new Date(b.scanned_at).getTime() : (b.status === 'PROCESSING' ? 9999999999999 : 0);
+        const timeA = a.scanned_at ? (parseUtcDate(a.scanned_at)?.getTime() || 0) : (a.status === 'PROCESSING' ? 9999999999999 : 0);
+        const timeB = b.scanned_at ? (parseUtcDate(b.scanned_at)?.getTime() || 0) : (b.status === 'PROCESSING' ? 9999999999999 : 0);
         return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
       }
 
