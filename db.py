@@ -261,8 +261,8 @@ def query_recommendations(
         cursor.execute(count_query, params)
         total = cursor.fetchone()[0]
 
-        # Fetch records
-        query += " ORDER BY id DESC LIMIT ? OFFSET ?"
+        # Fetch records sorted by video date DESC
+        query += " ORDER BY COALESCE(NULLIF(published_at, ''), created_at) DESC, id DESC LIMIT ? OFFSET ?"
         params.extend([limit, offset])
 
         cursor.execute(query, params)
@@ -276,6 +276,98 @@ def query_recommendations(
             results.append(d)
 
         return {"total": total, "items": results, "limit": limit, "offset": offset}
+
+
+def query_consensus(
+    search: Optional[str] = None,
+    sentiment: Optional[str] = None,
+    channel_name: Optional[str] = None,
+    market: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """Groups recommendations by stock ticker to show consensus across all creators."""
+    all_recs = query_recommendations(
+        search=search,
+        sentiment=sentiment,
+        channel_name=channel_name,
+        market=market,
+        limit=500
+    ).get("items", [])
+
+    grouped: Dict[str, Dict[str, Any]] = {}
+
+    for r in all_recs:
+        ticker = r["ticker"].upper()
+        if ticker not in grouped:
+            grouped[ticker] = {
+                "ticker": ticker,
+                "company_name": r.get("company_name", ticker),
+                "market": r.get("market", "US"),
+                "latest_date": r.get("published_at") or r.get("created_at", ""),
+                "sentiments": [],
+                "targets": [],
+                "entries": [],
+                "channels": set(),
+                "calls": []
+            }
+
+        g = grouped[ticker]
+        g["sentiments"].append(r.get("sentiment", "BUY"))
+        if r.get("target_price"):
+            g["targets"].append(r["target_price"])
+        if r.get("buy_entry_zone"):
+            g["entries"].append(r["buy_entry_zone"])
+        g["channels"].add(r.get("channel_name", "Unknown"))
+        
+        # Keep latest date
+        item_date = r.get("published_at") or r.get("created_at", "")
+        if item_date and item_date > g["latest_date"]:
+            g["latest_date"] = item_date
+
+        g["calls"].append(r)
+
+    # Format consensus summary
+    results = []
+    for ticker, data in grouped.items():
+        total_calls = len(data["calls"])
+        unique_creators = len(data["channels"])
+        
+        # Count sentiment frequencies
+        sentiment_counts = {}
+        for s in data["sentiments"]:
+            sentiment_counts[s] = sentiment_counts.get(s, 0) + 1
+        
+        # Sort calls by date DESC
+        sorted_calls = sorted(
+            data["calls"],
+            key=lambda x: (x.get("published_at") or x.get("created_at") or ""),
+            reverse=True
+        )
+
+        # Dominant stance
+        dominant_sentiment = max(sentiment_counts.items(), key=lambda x: x[1])[0]
+
+        results.append({
+            "ticker": ticker,
+            "company_name": data["company_name"],
+            "market": data["market"],
+            "total_calls": total_calls,
+            "unique_creators": unique_creators,
+            "creator_names": list(data["channels"]),
+            "latest_date": data["latest_date"],
+            "dominant_sentiment": dominant_sentiment,
+            "sentiment_counts": sentiment_counts,
+            "targets": list(set(data["targets"])),
+            "entries": list(set(data["entries"])),
+            "calls": sorted_calls
+        })
+
+    # Sort grouped stocks: highest mentions first, then newest date DESC
+    results.sort(
+        key=lambda x: (x["total_calls"], x["latest_date"] or ""),
+        reverse=True
+    )
+    return results
+
 
 
 def get_stats() -> Dict[str, Any]:

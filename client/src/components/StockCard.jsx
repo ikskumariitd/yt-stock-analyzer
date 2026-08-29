@@ -152,7 +152,7 @@ export default function StockCard({ recommendation, onOpenDetail }) {
         )}
       </div>
 
-      {/* Footer: Channel + Timestamp Link */}
+      {/* Footer: Channel + Date + Timestamp Link */}
       <div style={{
         paddingTop: '12px',
         borderTop: '1px solid var(--border-subtle)',
@@ -162,9 +162,12 @@ export default function StockCard({ recommendation, onOpenDetail }) {
         fontSize: '0.75rem',
         color: 'var(--text-muted)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ fontWeight: '600', color: 'var(--text-secondary)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <span style={{ fontWeight: '700', color: '#ffffff' }}>
             {r.channel_name || 'YouTube Creator'}
+          </span>
+          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+            📅 {r.published_at ? new Date(r.published_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : (r.created_at ? new Date(r.created_at).toLocaleDateString() : 'Recent')}
           </span>
         </div>
 
@@ -177,16 +180,22 @@ export default function StockCard({ recommendation, onOpenDetail }) {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '4px',
-            color: 'var(--color-accumulate)',
+            color: '#a5b4fc',
+            background: 'rgba(99, 102, 241, 0.15)',
+            border: '1px solid rgba(99, 102, 241, 0.3)',
+            padding: '4px 8px',
+            borderRadius: '6px',
             textDecoration: 'none',
-            fontWeight: '600'
+            fontWeight: '700',
+            fontSize: '0.75rem'
           }}
         >
           <Clock size={12} />
-          {r.timestamp_reference || 'Watch'}
+          {r.timestamp_reference || 'Watch Video'}
           <ArrowUpRight size={12} />
         </a>
       </div>
+
     </div>
   );
 }

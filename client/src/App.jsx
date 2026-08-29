@@ -6,8 +6,10 @@ import StockCard from './components/StockCard';
 import StockDetailModal from './components/StockDetailModal';
 import ChannelManager from './components/ChannelManager';
 import ScanModal from './components/ScanModal';
+import ConsensusView from './components/ConsensusView';
 import {
   fetchRecommendations,
+  fetchConsensus,
   fetchStats,
   fetchChannels,
   fetchScanStatus,
@@ -18,9 +20,11 @@ import { RefreshCw, Radio, Search } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('stocks'); // 'stocks' | 'channels'
+  const [viewMode, setViewMode] = useState('individual'); // 'individual' | 'consensus'
   
   // Data state
   const [recommendations, setRecommendations] = useState([]);
+  const [consensusData, setConsensusData] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState(null);
   const [channels, setChannels] = useState([]);
@@ -40,13 +44,15 @@ export default function App() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [recsData, statsData, channelsData] = await Promise.all([
+      const [recsData, consensusList, statsData, channelsData] = await Promise.all([
         fetchRecommendations({ search, sentiment, channel, limit: 100 }),
+        fetchConsensus({ search, sentiment, channel }),
         fetchStats(),
         fetchChannels()
       ]);
       setRecommendations(recsData.items || []);
-      setTotalCount(recsData.total || 0);
+      setConsensusData(consensusList || []);
+      setTotalCount(viewMode === 'consensus' ? (consensusList?.length || 0) : (recsData.total || 0));
       setStats(statsData);
       setChannels(channelsData || []);
     } catch (err) {
@@ -54,7 +60,8 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [search, sentiment, channel]);
+  }, [search, sentiment, channel, viewMode]);
+
 
   useEffect(() => {
     loadData();
@@ -200,14 +207,21 @@ export default function App() {
               setChannel={setChannel}
               channelsList={channels}
               totalResults={totalCount}
+              viewMode={viewMode}
+              setViewMode={setViewMode}
             />
 
-            {/* Recommendations Grid */}
+            {/* Recommendations or Consensus View */}
             {loading ? (
               <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
                 <RefreshCw size={32} className="animate-spin" style={{ margin: '0 auto 12px' }} />
                 <p>Loading real-time stock recommendations...</p>
               </div>
+            ) : viewMode === 'consensus' ? (
+              <ConsensusView
+                consensusData={consensusData}
+                onSelectStock={setSelectedStock}
+              />
             ) : recommendations.length === 0 ? (
               <div
                 className="glass-panel"
@@ -257,6 +271,7 @@ export default function App() {
             )}
           </div>
         )}
+
 
         {/* Tab 2: Channels Manager */}
         {activeTab === 'channels' && (

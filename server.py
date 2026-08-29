@@ -190,6 +190,22 @@ def get_recommendations(
     )
 
 
+@app.get("/api/consensus")
+def get_consensus(
+    search: Optional[str] = Query(None, description="Search ticker, company, or thesis"),
+    sentiment: Optional[str] = Query(None, description="Sentiment filter"),
+    channel: Optional[str] = Query(None, description="Channel filter"),
+    market: Optional[str] = Query(None, description="Market filter")
+):
+    return db.query_consensus(
+        search=search,
+        sentiment=sentiment,
+        channel_name=channel,
+        market=market
+    )
+
+
+
 @app.get("/api/stats")
 def get_stats():
     return db.get_stats()
