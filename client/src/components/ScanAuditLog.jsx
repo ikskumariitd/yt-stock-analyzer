@@ -274,7 +274,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
   };
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ width: '100%', margin: '0 auto', padding: '0' }}>
       {/* Toast Notification */}
       {actionMsg && (
         <div style={{
@@ -616,14 +616,14 @@ export default function ScanAuditLog({ onRescanTriggered }) {
               width: '100%',
               borderCollapse: 'collapse',
               textAlign: 'left',
-              fontSize: '0.85rem'
+              fontSize: '0.82rem'
             }}>
               <thead>
                 <tr style={{
                   borderBottom: '1px solid var(--border-subtle)',
                   background: 'var(--bg-secondary)',
                   color: 'var(--text-muted)',
-                  fontSize: '0.75rem',
+                  fontSize: '0.72rem',
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em',
                   userSelect: 'none'
@@ -632,9 +632,11 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                   <th
                     onClick={() => handleHeaderClick('scanned_at')}
                     style={{
-                      padding: '14px 18px',
+                      padding: '10px 8px 10px 14px',
                       fontWeight: '700',
                       cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      width: '130px',
                       color: sortField === 'scanned_at' ? 'var(--color-brand)' : 'var(--text-muted)'
                     }}
                     title="Click to sort by Scan Time"
@@ -648,9 +650,11 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                   <th
                     onClick={() => handleHeaderClick('published_at')}
                     style={{
-                      padding: '14px 18px',
+                      padding: '10px 8px',
                       fontWeight: '700',
                       cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      width: '105px',
                       color: sortField === 'published_at' ? 'var(--color-brand)' : 'var(--text-muted)'
                     }}
                     title="Click to sort by Video Upload / Published Date"
@@ -664,9 +668,11 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                   <th
                     onClick={() => handleHeaderClick('platform')}
                     style={{
-                      padding: '14px 18px',
+                      padding: '10px 8px',
                       fontWeight: '700',
                       cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      width: '90px',
                       color: sortField === 'platform' ? 'var(--color-brand)' : 'var(--text-muted)'
                     }}
                     title="Click to sort by Platform"
@@ -680,9 +686,11 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                   <th
                     onClick={() => handleHeaderClick('channel_name')}
                     style={{
-                      padding: '14px 18px',
+                      padding: '10px 8px',
                       fontWeight: '700',
                       cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      width: '120px',
                       color: sortField === 'channel_name' ? 'var(--color-brand)' : 'var(--text-muted)'
                     }}
                     title="Click to sort by Creator"
@@ -696,7 +704,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                   <th
                     onClick={() => handleHeaderClick('title')}
                     style={{
-                      padding: '14px 18px',
+                      padding: '10px 8px',
                       fontWeight: '700',
                       cursor: 'pointer',
                       color: sortField === 'title' ? 'var(--color-brand)' : 'var(--text-muted)'
@@ -712,9 +720,11 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                   <th
                     onClick={() => handleHeaderClick('status')}
                     style={{
-                      padding: '14px 18px',
+                      padding: '10px 8px',
                       fontWeight: '700',
                       cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      width: '125px',
                       color: sortField === 'status' ? 'var(--color-brand)' : 'var(--text-muted)'
                     }}
                     title="Click to sort by Pass/Fail Status"
@@ -725,7 +735,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                   </th>
 
                   {/* Actions Header (Placed right after Status) */}
-                  <th style={{ padding: '14px 18px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                  <th style={{ padding: '10px 8px', fontWeight: '700', whiteSpace: 'nowrap', width: '85px' }}>
                     ACTION
                   </th>
 
@@ -733,9 +743,11 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                   <th
                     onClick={() => handleHeaderClick('model_used')}
                     style={{
-                      padding: '14px 18px',
+                      padding: '10px 8px',
                       fontWeight: '700',
                       cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      width: '135px',
                       color: sortField === 'model_used' ? 'var(--color-brand)' : 'var(--text-muted)'
                     }}
                     title="Click to sort by Gemini Model Used"
@@ -749,9 +761,11 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                   <th
                     onClick={() => handleHeaderClick('stocks_count')}
                     style={{
-                      padding: '14px 18px',
+                      padding: '10px 14px 10px 8px',
                       fontWeight: '700',
                       cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      width: '140px',
                       color: sortField === 'stocks_count' ? 'var(--color-brand)' : 'var(--text-muted)'
                     }}
                     title="Click to sort by Stocks Found"
@@ -779,7 +793,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                     }}
                   >
                     {/* Scan Timestamp */}
-                    <td style={{ padding: '14px 18px', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    <td style={{ padding: '10px 8px 10px 14px', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                       {item.status === 'PROCESSING' ? (
                         <span style={{ color: 'var(--color-brand)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <Loader2 size={12} className="spin" /> Right Now
@@ -792,7 +806,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                     </td>
 
                     {/* Video Upload / Published Date */}
-                    <td style={{ padding: '14px 18px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                    <td style={{ padding: '10px 8px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
                       {item.published_at ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                           📅 {formatSingaporeDate(item.published_at)}
@@ -803,27 +817,27 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                     </td>
 
                     {/* Platform Badge */}
-                    <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
                       {item.platform === 'instagram' ? (
                         <span style={{
                           background: 'rgba(225, 48, 108, 0.12)',
                           color: '#e1306c',
                           border: '1px solid rgba(225, 48, 108, 0.3)',
-                          fontSize: '0.7rem',
+                          fontSize: '0.68rem',
                           fontWeight: '700',
-                          padding: '3px 8px',
+                          padding: '2px 6px',
                           borderRadius: '6px'
                         }}>
-                          📷 Instagram
+                          📷 IG
                         </span>
                       ) : (
                         <span style={{
                           background: 'rgba(239, 68, 68, 0.12)',
                           color: '#ef4444',
                           border: '1px solid rgba(239, 68, 68, 0.3)',
-                          fontSize: '0.7rem',
+                          fontSize: '0.68rem',
                           fontWeight: '700',
-                          padding: '3px 8px',
+                          padding: '2px 6px',
                           borderRadius: '6px'
                         }}>
                           🔴 YouTube
@@ -832,12 +846,12 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                     </td>
 
                     {/* Creator */}
-                    <td style={{ padding: '14px 18px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }} title={item.channel_name || 'Creator'}>
                       {item.channel_name || 'Creator'}
                     </td>
 
                     {/* Title & Link */}
-                    <td style={{ padding: '14px 18px', maxWidth: '380px' }}>
+                    <td style={{ padding: '10px 8px', minWidth: '180px', maxWidth: '320px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <a
                           href={item.video_url || '#'}
@@ -847,7 +861,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                             color: 'var(--text-primary)',
                             fontWeight: '600',
                             textDecoration: 'none',
-                            lineHeight: '1.4',
+                            lineHeight: '1.3',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap'
@@ -865,33 +879,35 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                             rel="noreferrer"
                             style={{ color: 'var(--text-muted)', flexShrink: 0 }}
                           >
-                            <ExternalLink size={12} />
+                            <ExternalLink size={11} />
                           </a>
                         )}
                       </div>
                       {item.error_message && (
                         <div style={{
-                          fontSize: '0.72rem',
+                          fontSize: '0.7rem',
                           color: item.status === 'FAILED' ? '#ef4444' : 'var(--text-muted)',
-                          marginTop: '3px',
+                          marginTop: '2px',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '4px'
+                          gap: '4px',
+                          wordBreak: 'break-word',
+                          lineHeight: '1.2'
                         }}>
-                          <AlertTriangle size={11} /> {item.error_message}
+                          <AlertTriangle size={10} style={{ flexShrink: 0 }} /> {item.error_message}
                         </div>
                       )}
                     </td>
 
                     {/* Status */}
-                    <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
                       {getStatusBadge(item.status)}
                     </td>
 
                     {/* Actions (Placed right after Status) */}
-                    <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
                       {item.status === 'PROCESSING' || item.status === 'QUEUED' ? (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                           In Progress
                         </span>
                       ) : (
@@ -902,13 +918,13 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '5px',
-                            padding: '5px 10px',
-                            borderRadius: '8px',
+                            gap: '4px',
+                            padding: '4px 8px',
+                            borderRadius: '6px',
                             border: '1px solid var(--border-subtle)',
                             background: 'var(--bg-secondary)',
                             color: 'var(--text-secondary)',
-                            fontSize: '0.75rem',
+                            fontSize: '0.72rem',
                             fontWeight: '600',
                             cursor: 'pointer',
                             transition: 'all 0.2s ease'
@@ -922,59 +938,59 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                             e.currentTarget.style.color = 'var(--text-secondary)';
                           }}
                         >
-                          <RotateCcw size={12} className={rescanningId === item.video_id ? 'spin' : ''} />
+                          <RotateCcw size={11} className={rescanningId === item.video_id ? 'spin' : ''} />
                           {rescanningId === item.video_id ? 'Scanning...' : 'Re-Scan'}
                         </button>
                       )}
                     </td>
 
                     {/* AI Model Badge */}
-                    <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                    <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
                       {item.status === 'PROCESSING' ? (
                         <span style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: '4px',
-                          padding: '3px 8px',
+                          gap: '3px',
+                          padding: '2px 6px',
                           borderRadius: '6px',
-                          fontSize: '0.72rem',
+                          fontSize: '0.7rem',
                           fontWeight: '700',
                           background: 'rgba(99, 102, 241, 0.1)',
                           color: 'var(--color-brand)',
                           border: '1px solid rgba(99, 102, 241, 0.25)'
                         }}>
-                          <Loader2 size={10} className="spin" /> Selecting
+                          <Loader2 size={9} className="spin" /> Selecting
                         </span>
                       ) : item.status === 'QUEUED' ? (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>—</span>
                       ) : (
                         <span style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '4px',
-                          padding: '3px 8px',
+                          padding: '2px 7px',
                           borderRadius: '6px',
-                          fontSize: '0.72rem',
+                          fontSize: '0.7rem',
                           fontWeight: '700',
                           background: item.model_used && item.model_used.includes('3.6') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.08)',
                           color: item.model_used && item.model_used.includes('3.6') ? '#059669' : '#4f46e5',
                           border: item.model_used && item.model_used.includes('3.6') ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(99, 102, 241, 0.2)'
                         }}>
-                          <Sparkles size={11} color={item.model_used && item.model_used.includes('3.6') ? '#059669' : '#6366f1'} />
+                          <Sparkles size={10} color={item.model_used && item.model_used.includes('3.6') ? '#059669' : '#6366f1'} />
                           {item.model_used || 'gemini-3.5-flash-lite'}
                         </span>
                       )}
                     </td>
 
                     {/* Stocks Found */}
-                    <td style={{ padding: '14px 18px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                    <td style={{ padding: '10px 14px 10px 8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '3px', flexWrap: 'wrap' }}>
                         {item.status === 'PROCESSING' ? (
-                          <span style={{ color: 'var(--color-brand)', fontSize: '0.75rem', fontWeight: '600' }}>
+                          <span style={{ color: 'var(--color-brand)', fontSize: '0.72rem', fontWeight: '600' }}>
                             Analyzing with Gemini...
                           </span>
                         ) : item.status === 'QUEUED' ? (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
                             Waiting in line
                           </span>
                         ) : item.tickers && item.tickers.length > 0 ? (
@@ -985,9 +1001,9 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                                 background: 'var(--bg-secondary)',
                                 color: 'var(--color-brand)',
                                 border: '1px solid var(--border-subtle)',
-                                padding: '2px 7px',
-                                borderRadius: '6px',
-                                fontSize: '0.72rem',
+                                padding: '1px 6px',
+                                borderRadius: '5px',
+                                fontSize: '0.7rem',
                                 fontWeight: '800'
                               }}
                             >
@@ -995,9 +1011,9 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                             </span>
                           ))
                         ) : item.status === 'SUCCESS' ? (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>0 stocks</span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>0 stocks</span>
                         ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>—</span>
                         )}
                       </div>
                     </td>

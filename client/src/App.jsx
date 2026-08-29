@@ -192,7 +192,7 @@ export default function App() {
       )}
 
       {/* Main Container */}
-      <main style={{ flex: 1, maxWidth: '1400px', width: '100%', margin: '0 auto', padding: '24px' }}>
+      <main style={{ flex: 1, maxWidth: '1680px', width: '100%', margin: '0 auto', padding: '20px 24px' }}>
         {/* Tab 1: Stock Radar */}
         {activeTab === 'stocks' && (
           <div>

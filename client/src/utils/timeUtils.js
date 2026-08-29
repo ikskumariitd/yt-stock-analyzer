@@ -12,6 +12,14 @@ export function parseUtcDate(input) {
     return new Date(str);
   }
 
+  // If 8-digit string format "YYYYMMDD" (e.g. from yt-dlp 20260816)
+  if (/^\d{8}$/.test(str)) {
+    const y = str.slice(0, 4);
+    const m = str.slice(4, 6);
+    const day = str.slice(6, 8);
+    return new Date(`${y}-${m}-${day}T00:00:00Z`);
+  }
+
   // If pure date format "YYYY-MM-DD"
   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
     return new Date(str + 'T00:00:00Z');
