@@ -183,6 +183,12 @@ Listen to the spoken audio and extract every mentioned stock/ticker, sentiment, 
             if media_path and os.path.exists(media_path):
                 try:
                     uploaded_file = client.files.upload(file=media_path)
+                    # Poll for file state to become ACTIVE (max 15s)
+                    poll_count = 0
+                    while getattr(uploaded_file, "state", None) and getattr(uploaded_file.state, "name", "") == "PROCESSING" and poll_count < 8:
+                        time.sleep(2)
+                        uploaded_file = client.files.get(name=uploaded_file.name)
+                        poll_count += 1
                     contents.append(uploaded_file)
                 except Exception as up_err:
                     print(f"Audio upload warning (falling back to caption prompt): {up_err}")

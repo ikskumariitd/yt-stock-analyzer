@@ -206,24 +206,32 @@ class SequentialScanQueue:
 
                             if t_data.get("audio_fallback") and t_data.get("audio_path"):
                                 self.log(f"🎙️ Running Gemini Audio extraction for '{item.title}' (IP-block resilient fallback)...")
-                                summary = await asyncio.to_thread(
-                                    analyze_instagram_media_with_gemini,
-                                    {
-                                        "title": item.title,
-                                        "author": ch_name,
-                                        "caption": f"YouTube video audio track: {item.title}",
-                                        "media_path": t_data["audio_path"]
-                                    }
-                                )
-                                # Cleanup temp audio
                                 try:
-                                    if os.path.exists(t_data["audio_path"]):
-                                        os.remove(t_data["audio_path"])
-                                except Exception:
-                                    pass
+                                    summary = await asyncio.wait_for(
+                                        asyncio.to_thread(
+                                            analyze_instagram_media_with_gemini,
+                                            {
+                                                "title": item.title,
+                                                "author": ch_name,
+                                                "caption": f"YouTube video audio track: {item.title}",
+                                                "media_path": t_data["audio_path"]
+                                            }
+                                        ),
+                                        timeout=90.0
+                                    )
+                                finally:
+                                    # Cleanup temp audio
+                                    try:
+                                        if os.path.exists(t_data["audio_path"]):
+                                            os.remove(t_data["audio_path"])
+                                    except Exception:
+                                        pass
                             else:
                                 self.log(f"🧠 Extracting stock calls with Gemini for '{item.title}'...")
-                                summary = await asyncio.to_thread(analyze_transcript_with_gemini, t_data)
+                                summary = await asyncio.wait_for(
+                                    asyncio.to_thread(analyze_transcript_with_gemini, t_data),
+                                    timeout=75.0
+                                )
 
                             if not summary:
                                 raise RuntimeError("Gemini extraction returned empty result")
