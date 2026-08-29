@@ -258,7 +258,22 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            {/* Stock Ticker Pill */}
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              background: 'rgba(99, 102, 241, 0.25)',
+                              border: '1px solid rgba(99, 102, 241, 0.5)',
+                              color: '#ffffff',
+                              fontSize: '0.8rem',
+                              fontWeight: '900',
+                              letterSpacing: '0.04em',
+                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+                            }}>
+                              ${call.ticker || stock.ticker}
+                            </span>
+
                             <span style={{
                               padding: '4px 10px',
                               borderRadius: '6px',
@@ -272,9 +287,10 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                             </span>
                             {call.strategy_type && (
                               <span style={{
-                                padding: '3px 8px',
+                                padding: '4px 8px',
                                 borderRadius: '6px',
-                                background: 'rgba(255, 255, 255, 0.05)',
+                                background: 'rgba(255, 255, 255, 0.06)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
                                 color: 'var(--text-secondary)',
                                 fontSize: '0.7rem',
                                 fontWeight: '700'
@@ -283,6 +299,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                               </span>
                             )}
                           </div>
+
                         </div>
 
                         {/* Video Title */}
