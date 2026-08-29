@@ -358,7 +358,8 @@ async def trigger_scan(req: ScanRequest):
                 video_id=v["video_id"],
                 channel_id=ch_id,
                 channel_name=v.get("channel_name", target),
-                title=v.get("title", "")
+                title=v.get("title", ""),
+                published_at=v.get("published", "")
             ):
                 added += 1
         await asyncio.to_thread(db.update_channel_scan_time, target)
@@ -382,12 +383,14 @@ async def trigger_scan_all(limit: int = 2):
                     video_id=v["video_id"],
                     channel_id=ch_id,
                     channel_name=ch.get("name", v.get("channel_name")),
-                    title=v.get("title", "")
+                    title=v.get("title", ""),
+                    published_at=v.get("published", "")
                 ):
                     total_added += 1
             await asyncio.to_thread(db.update_channel_scan_time, url)
 
     scan_queue.trigger_worker()
+
     return {
         "success": True,
         "message": f"Enqueued {total_added} videos across {len(enabled_channels)} channels for sequential processing (1-at-a-time)."

@@ -14,44 +14,42 @@ import {
 export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, isScanning }) {
   const [newHandle, setNewHandle] = useState('');
   const [newName, setNewName] = useState('');
+  const [scanLimit, setScanLimit] = useState(3);
+  const [channelLimits, setChannelLimits] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [scanLimit, setScanLimit] = useState(2);
   const [authStatus, setAuthStatus] = useState(null);
-  const [isSyncingLive, setIsSyncingLive] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
 
+  // Fetch YouTube OAuth live status
   useEffect(() => {
-    fetchYoutubeAuthStatus().then(setAuthStatus).catch(() => {});
+    fetchYoutubeAuthStatus()
+      .then(data => setAuthStatus(data))
+      .catch(() => setAuthStatus(null));
   }, []);
 
-  const handleLiveSync = async () => {
-    if (!authStatus?.connected) {
-      // Redirect to Google login
-      window.location.href = '/api/auth/youtube/login';
-      return;
-    }
-
-    setIsSyncingLive(true);
+  const handleSyncSubscriptions = async () => {
     try {
+      setIsSyncing(true);
+      setSyncMessage('Connecting to YouTube API and fetching subscriptions...');
       const res = await syncLiveYoutubeSubscriptions();
-      alert(res.message);
+      setSyncMessage(`✓ Synced ${res.channels_count} channels successfully!`);
       onRefresh();
     } catch (err) {
-      if (err.message.includes('401') || err.message.includes('connect')) {
-        window.location.href = '/api/auth/youtube/login';
-      } else {
-        alert(err.message);
-      }
+      setSyncMessage(`⚠️ Error syncing: ${err.message}`);
     } finally {
-      setIsSyncingLive(false);
+      setIsSyncing(false);
+      setTimeout(() => setSyncMessage(''), 6000);
     }
   };
 
   const handleAdd = async (e) => {
     e.preventDefault();
     if (!newHandle.trim()) return;
-    setIsSubmitting(true);
+
     try {
-      await addChannel(newHandle.trim(), newName.trim() || undefined);
+      setIsSubmitting(true);
+      await addChannel(newHandle.trim(), newName.trim());
       setNewHandle('');
       setNewName('');
       onRefresh();
@@ -81,14 +79,16 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
     }
   };
 
-  const handleScanSingle = async (url) => {
+  const handleScanSingle = async (ch) => {
+    const limit = channelLimits[ch.id] || 2;
     try {
-      await triggerScan(url, scanLimit);
-      alert(`Started background scan for ${url}!`);
+      await triggerScan(ch.url, limit);
+      alert(`Enqueued latest ${limit} videos from "${ch.name}" for sequential scan (already analyzed videos will skip automatically)!`);
     } catch (err) {
       alert(err.message);
     }
   };
+
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
@@ -264,74 +264,140 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{
-                width: '40px',
-                height: '40px',
-                borderRadius: '10px',
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
                 background: ch.enabled ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
                 color: ch.enabled ? 'var(--color-buy)' : 'var(--text-muted)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: '800',
-                fontSize: '1rem'
+                fontWeight: '900',
+                fontSize: '1.1rem'
               }}>
                 {ch.name ? ch.name[0].toUpperCase() : 'Y'}
               </div>
               <div>
-                <h4 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#ffffff' }}>
-                  {ch.name}
-                </h4>
-                <a
-                  href={ch.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h4 style={{ fontSize: '1rem', fontWeight: '800', color: '#ffffff' }}>
+                    {ch.name}
+                  </h4>
+                  <a
+                    href={ch.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--text-muted)',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    {ch.handle || ch.url} <ExternalLink size={10} />
+                  </a>
+                </div>
+
+                {/* Tracked Videos & Picks Stats */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
+                  <span style={{
                     fontSize: '0.75rem',
-                    color: 'var(--text-muted)',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  {ch.handle || ch.url} <ExternalLink size={10} />
-                </a>
+                    background: 'rgba(99, 102, 241, 0.15)',
+                    border: '1px solid rgba(99, 102, 241, 0.3)',
+                    color: '#a5b4fc',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontWeight: '700'
+                  }}>
+                    🎬 {ch.analyzed_videos_count || 0} Videos Tracked
+                  </span>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    background: 'rgba(16, 185, 129, 0.15)',
+                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    color: '#34d399',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontWeight: '700'
+                  }}>
+                    📈 {ch.stock_picks_count || 0} Stock Calls
+                  </span>
+                  {ch.last_scanned_at && (
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      • Last scanned: {new Date(ch.last_scanned_at).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {ch.last_scanned_at && (
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Last scanned: {new Date(ch.last_scanned_at).toLocaleDateString()}
-                </span>
-              )}
+            {/* Encircled Action Controls with Per-Channel Fetch Limit */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              background: 'rgba(2, 6, 23, 0.5)',
+              padding: '6px 12px',
+              borderRadius: '10px',
+              border: '1px solid rgba(255, 255, 255, 0.08)'
+            }}>
+              {/* Per-Channel Video Limit Selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>Fetch:</span>
+                <select
+                  value={channelLimits[ch.id] || 2}
+                  onChange={e => setChannelLimits(prev => ({ ...prev, [ch.id]: parseInt(e.target.value) }))}
+                  style={{
+                    background: 'rgba(15, 23, 42, 0.9)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '6px',
+                    color: '#ffffff',
+                    padding: '4px 8px',
+                    fontSize: '0.75rem',
+                    fontWeight: '700',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                  title="Number of recent videos to check (duplicates will be skipped)"
+                >
+                  <option value={1}>1 Video</option>
+                  <option value={2}>2 Videos</option>
+                  <option value={3}>3 Videos</option>
+                  <option value={5}>5 Videos</option>
+                  <option value={10}>10 Videos</option>
+                </select>
+              </div>
 
+              {/* Scan Button */}
               <button
-                onClick={() => handleScanSingle(ch.url)}
+                onClick={() => handleScanSingle(ch)}
+                title="Scan channel (Skips already analyzed videos automatically)"
                 style={{
-                  background: 'rgba(99, 102, 241, 0.15)',
-                  border: '1px solid rgba(99, 102, 241, 0.3)',
-                  color: '#a5b4fc',
-                  padding: '6px 12px',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(16, 185, 129, 0.3))',
+                  border: '1px solid rgba(99, 102, 241, 0.5)',
+                  color: '#ffffff',
+                  padding: '6px 14px',
                   borderRadius: '6px',
                   fontSize: '0.8rem',
-                  fontWeight: '600',
+                  fontWeight: '700',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px'
                 }}
               >
-                <Play size={12} fill="#a5b4fc" /> Scan Channel
+                <Play size={12} fill="#ffffff" /> Scan Channel
               </button>
 
+              {/* Toggle Enable/Disable */}
               <button
                 onClick={() => handleToggle(ch.id)}
                 style={{
                   background: ch.enabled ? 'rgba(16, 185, 129, 0.2)' : 'rgba(244, 63, 94, 0.2)',
                   border: ch.enabled ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(244, 63, 94, 0.4)',
                   color: ch.enabled ? 'var(--color-buy)' : 'var(--color-sell)',
-                  padding: '6px 12px',
+                  padding: '6px 10px',
                   borderRadius: '6px',
                   fontSize: '0.75rem',
                   fontWeight: '800',
@@ -341,6 +407,7 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
                 {ch.enabled ? 'ENABLED' : 'DISABLED'}
               </button>
 
+              {/* Delete Button */}
               <button
                 onClick={() => handleDelete(ch.id, ch.name)}
                 title="Remove Channel"
@@ -361,6 +428,7 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
             </div>
           </div>
         ))}
+
       </div>
     </div>
   );

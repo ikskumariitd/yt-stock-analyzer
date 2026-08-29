@@ -19,6 +19,7 @@ class QueueItem:
     channel_id: str = ""
     channel_name: str = ""
     title: str = ""
+    published_at: str = ""
     status: str = "pending"  # pending, processing, completed, skipped, failed
     error: Optional[str] = None
     enqueued_at: float = field(default_factory=time.time)
@@ -44,7 +45,7 @@ class SequentialScanQueue:
             self._logs.pop(0)
         print(log_line)
 
-    def enqueue_video(self, video_id: str, channel_id: str = "", channel_name: str = "", title: str = "") -> bool:
+    def enqueue_video(self, video_id: str, channel_id: str = "", channel_name: str = "", title: str = "", published_at: str = "") -> bool:
         """Enqueue a single video if not already queued."""
         if any(item.video_id == video_id for item in self._queue):
             return False
@@ -55,13 +56,15 @@ class SequentialScanQueue:
             video_id=video_id,
             channel_id=channel_id,
             channel_name=channel_name,
-            title=title or f"Video {video_id}"
+            title=title or f"Video {video_id}",
+            published_at=published_at
         )
         self._queue.append(item)
         self._total_batch_size += 1
         self.log(f"📥 Enqueued: {item.title} ({video_id})")
         self.trigger_worker()
         return True
+
 
     def clear_queue(self):
         """Clear pending queue items and reset batch counts."""
@@ -130,13 +133,14 @@ class SequentialScanQueue:
                             channel_id=item.channel_id,
                             channel_name=ch_name,
                             title=item.title,
-                            published_at="",
+                            published_at=item.published_at or t_data.get("published_at", ""),
                             video_url=f"https://www.youtube.com/watch?v={item.video_id}",
                             market_outlook=summary.market_outlook,
                             summary_text=summary.creator_summary,
                             macro_takeaways=summary.macro_key_takeaways,
                             recommendations=summary.recommendations
                         )
+
                         item.status = "completed"
                         self.log(f"✓ Extracted and saved {len(summary.recommendations)} stock calls from '{item.title}'!")
 

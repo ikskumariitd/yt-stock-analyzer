@@ -119,8 +119,16 @@ def upsert_channel(name: str, url: str, handle: Optional[str] = None, channel_id
 def get_channels() -> List[Dict[str, Any]]:
     with get_connection() as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM channels ORDER BY name ASC")
+        cursor.execute("""
+        SELECT 
+            c.*,
+            (SELECT COUNT(*) FROM videos v WHERE v.channel_id = c.channel_id OR v.channel_name = c.name) as analyzed_videos_count,
+            (SELECT COUNT(*) FROM recommendations r WHERE r.channel_name = c.name) as stock_picks_count
+        FROM channels c
+        ORDER BY c.name ASC
+        """)
         return [dict(row) for row in cursor.fetchall()]
+
 
 
 def delete_channel(channel_id: int):
