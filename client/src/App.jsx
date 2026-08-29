@@ -41,10 +41,10 @@ export default function App() {
   const [selectedStock, setSelectedStock] = useState(null);
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
 
-  // Load Data
-  const loadData = useCallback(async () => {
+  // Load Data (with optional silent background refresh)
+  const loadData = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const [recsData, consensusList, statsData, channelsData] = await Promise.all([
         fetchRecommendations({ search, sentiment, channel, limit: 100 }),
         fetchConsensus({ search, sentiment, channel }),
@@ -59,31 +59,37 @@ export default function App() {
     } catch (err) {
       console.error('Error loading data:', err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   }, [search, sentiment, channel, viewMode]);
-
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Poll scan status every 3 seconds if active
+  // Poll scan status every 3.5 seconds without causing full-page reloads
   useEffect(() => {
+    let lastCompleted = 0;
+    let wasScanning = false;
+
     const interval = setInterval(async () => {
       try {
         const status = await fetchScanStatus();
         setScanStatus(status);
-        if (status.is_scanning) {
-          // If scan completed, reload data
-          loadData();
+
+        // Only refresh data when a video finishes or when the scan transitions from active to complete
+        if (status.completed_count > lastCompleted || (wasScanning && !status.is_scanning)) {
+          lastCompleted = status.completed_count;
+          loadData(true); // Silent background reload
         }
+        wasScanning = status.is_scanning;
       } catch (err) {
         // Ignore background poll errors
       }
-    }, 3000);
+    }, 3500);
     return () => clearInterval(interval);
   }, [loadData]);
+
 
   const handleTriggerScanAll = async (limit = 2) => {
     try {
