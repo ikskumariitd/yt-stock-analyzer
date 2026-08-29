@@ -20,7 +20,8 @@ import { RefreshCw, Radio, Search } from 'lucide-react';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('stocks'); // 'stocks' | 'channels'
-  const [viewMode, setViewMode] = useState('individual'); // 'individual' | 'consensus'
+  const [viewMode, setViewMode] = useState('consensus'); // 'consensus' (default clubbed) | 'individual'
+
   
   // Data state
   const [recommendations, setRecommendations] = useState([]);
