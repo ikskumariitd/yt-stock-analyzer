@@ -70,23 +70,28 @@ export async function deleteChannel(channelId) {
 }
 
 
-export async function triggerScan(target, limit = 2) {
+export async function triggerScan(target, limit = 2, afterDate = '') {
   const res = await fetch(`${API_BASE}/scan`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ target, limit })
+    body: JSON.stringify({ target, limit, after_date: afterDate || null })
   });
   if (!res.ok) throw new Error('Failed to trigger scan');
   return res.json();
 }
 
-export async function triggerScanAll(limit = 2) {
-  const res = await fetch(`${API_BASE}/scan-all?limit=${limit}`, {
+export async function triggerScanAll(limit = 2, afterDate = '') {
+  const params = new URLSearchParams();
+  params.append('limit', limit);
+  if (afterDate) params.append('after_date', afterDate);
+
+  const res = await fetch(`${API_BASE}/scan-all?${params.toString()}`, {
     method: 'POST'
   });
   if (!res.ok) throw new Error('Failed to trigger scan all');
   return res.json();
 }
+
 
 export async function fetchScanStatus() {
   const res = await fetch(`${API_BASE}/scan/status`);

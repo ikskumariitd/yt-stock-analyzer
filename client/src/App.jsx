@@ -101,10 +101,10 @@ export default function App() {
     return () => clearInterval(interval);
   }, [scanStatus?.is_scanning, loadData]);
 
-  const handleTriggerScanAll = async (limit = 2) => {
+  const handleTriggerScanAll = async (limit = 2, afterDate = '') => {
     try {
-      await triggerScanAll(limit);
-      alert('Batch scan started for all enabled channels!');
+      const res = await triggerScanAll(limit, afterDate);
+      alert(res.message || 'Batch scan started for all enabled channels!');
       // Immediately set is_scanning true to activate polling
       setScanStatus(prev => ({ ...prev, is_scanning: true }));
       const status = await fetchScanStatus();
@@ -113,6 +113,7 @@ export default function App() {
       alert(err.message);
     }
   };
+
 
 
   return (

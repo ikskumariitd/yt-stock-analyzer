@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tv, Plus, Play, Check, ExternalLink, RefreshCw, Radio, Link2, Sparkles, Trash2 } from 'lucide-react';
+import { Tv, Plus, Play, Check, ExternalLink, RefreshCw, Radio, Link2, Sparkles, Trash2, Calendar, X } from 'lucide-react';
 import {
   addChannel,
   toggleChannel,
@@ -14,6 +14,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
   const [newHandle, setNewHandle] = useState('');
   const [newName, setNewName] = useState('');
   const [scanLimit, setScanLimit] = useState(2);
+  const [scanAfterDate, setScanAfterDate] = useState('');
   const [channelLimits, setChannelLimits] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authStatus, setAuthStatus] = useState(null);
@@ -87,27 +88,39 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
   const handleScanSingle = async (ch) => {
     const limit = channelLimits[ch.id] || 2;
     try {
-      await triggerScan(ch.url, limit);
-      alert(`Enqueued latest ${limit} videos from "${ch.name}" for sequential scan (already analyzed videos will skip automatically)!`);
+      await triggerScan(ch.url, limit, scanAfterDate);
+      const dateMsg = scanAfterDate ? ` published after ${scanAfterDate}` : '';
+      alert(`Enqueued up to ${limit} videos${dateMsg} from "${ch.name}" for sequential scan (already analyzed videos will skip automatically)!`);
     } catch (err) {
       alert(err.message);
     }
   };
 
-  return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      {/* Top Banner & Batch Scan */}
-      <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Tv size={22} color="#6366f1" /> Monitored YouTube Creators ({channels?.length || 0})
-          </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-            The AI watcher scans these channels automatically to ingest new stock picks and key price levels.
-          </p>
-        </div>
+  // Quick preset helper
+  const setQuickDateOffset = (daysAgo) => {
+    if (daysAgo === 0) {
+      setScanAfterDate('');
+      return;
+    }
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    setScanAfterDate(d.toISOString().split('T')[0]);
+  };
 
-        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+  return (
+    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+      {/* Top Banner & Batch Scan Controls with Date Filter */}
+      <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <Tv size={22} color="#6366f1" /> Monitored YouTube Creators ({channels?.length || 0})
+            </h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
+              The AI watcher scans these channels automatically to ingest new stock picks and key price levels.
+            </p>
+          </div>
+
           {/* Live YouTube Account Sync Button */}
           <button
             onClick={handleLiveSync}
@@ -121,74 +134,204 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
               border: authStatus?.connected ? '1px solid rgba(16, 185, 129, 0.4)' : 'none',
               color: authStatus?.connected ? 'var(--color-buy)' : '#ffffff',
-              padding: '10px 16px',
+              padding: '8px 14px',
               borderRadius: '8px',
               fontWeight: '700',
-              fontSize: '0.85rem',
+              fontSize: '0.8rem',
               cursor: isSyncing ? 'not-allowed' : 'pointer',
               boxShadow: authStatus?.connected ? 'none' : '0 4px 14px rgba(239, 68, 68, 0.3)',
               transition: 'all 0.15s ease'
             }}
           >
             {isSyncing ? (
-              <RefreshCw size={16} className="animate-spin" />
+              <RefreshCw size={14} className="animate-spin" />
             ) : authStatus?.connected ? (
-              <Check size={16} />
+              <Check size={14} />
             ) : (
-              <Link2 size={16} />
+              <Link2 size={14} />
             )}
             {isSyncing
               ? 'Syncing with YouTube...'
               : authStatus?.connected
               ? '✓ Live Synced with YouTube'
-              : '🔗 Connect YouTube Account (Live Sync)'}
+              : '🔗 Connect YouTube Account'}
           </button>
+        </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Depth:</span>
-            <select
-              value={scanLimit}
-              onChange={e => setScanLimit(Number(e.target.value))}
-              style={{
-                background: 'rgba(2, 6, 23, 0.7)',
-                border: '1px solid var(--border-subtle)',
-                color: '#ffffff',
-                padding: '6px 10px',
-                borderRadius: '6px',
-                fontSize: '0.8rem',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <option value={1}>Latest 1 Video</option>
-              <option value={2}>Latest 2 Videos</option>
-              <option value={3}>Latest 3 Videos</option>
-              <option value={5}>Latest 5 Videos</option>
-            </select>
+        {/* Scan All Controls Bar: Date Picker + Depth + Action Button */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '14px',
+          padding: '14px 18px',
+          background: 'rgba(2, 6, 23, 0.65)',
+          border: '1px solid rgba(99, 102, 241, 0.25)',
+          borderRadius: '12px'
+        }}>
+          {/* Published After Date Filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Calendar size={15} color="#818cf8" />
+              <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#cbd5e1' }}>
+                Scan Videos After Date:
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <input
+                type="date"
+                value={scanAfterDate}
+                onChange={e => setScanAfterDate(e.target.value)}
+                style={{
+                  background: 'rgba(15, 23, 42, 0.9)',
+                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                  color: '#ffffff',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: '700',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              />
+              {scanAfterDate && (
+                <button
+                  onClick={() => setScanAfterDate('')}
+                  title="Clear Date Filter"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: 'none',
+                    color: '#94a3b8',
+                    padding: '6px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Quick Date Chips */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <button
+                onClick={() => setQuickDateOffset(1)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-secondary)',
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.7rem',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                24h
+              </button>
+              <button
+                onClick={() => setQuickDateOffset(7)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-secondary)',
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.7rem',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                7 Days
+              </button>
+              <button
+                onClick={() => setQuickDateOffset(30)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-secondary)',
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.7rem',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                30 Days
+              </button>
+              <button
+                onClick={() => setQuickDateOffset(0)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-secondary)',
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.7rem',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                All
+              </button>
+            </div>
           </div>
 
-          <button
-            onClick={() => onTriggerScanAll(scanLimit)}
-            disabled={isScanning}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-              color: '#ffffff',
-              border: 'none',
-              padding: '10px 18px',
-              borderRadius: '8px',
-              fontWeight: '700',
-              fontSize: '0.85rem',
-              cursor: isScanning ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)',
-              opacity: isScanning ? 0.7 : 1
-            }}
-          >
-            <RefreshCw size={16} className={isScanning ? 'animate-spin' : ''} />
-            {isScanning ? 'Scanning All...' : 'Scan All Channels'}
-          </button>
+          {/* Depth + Scan Action */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Depth:</span>
+              <select
+                value={scanLimit}
+                onChange={e => setScanLimit(Number(e.target.value))}
+                style={{
+                  background: 'rgba(15, 23, 42, 0.9)',
+                  border: '1px solid var(--border-subtle)',
+                  color: '#ffffff',
+                  padding: '7px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: '700',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value={1}>Latest 1 Video</option>
+                <option value={2}>Latest 2 Videos</option>
+                <option value={3}>Latest 3 Videos</option>
+                <option value={5}>Latest 5 Videos</option>
+                <option value={10}>Latest 10 Videos</option>
+                <option value={15}>All in Feed (15)</option>
+              </select>
+            </div>
+
+            <button
+              onClick={() => onTriggerScanAll(scanLimit, scanAfterDate)}
+              disabled={isScanning}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+                color: '#ffffff',
+                border: 'none',
+                padding: '9px 18px',
+                borderRadius: '8px',
+                fontWeight: '800',
+                fontSize: '0.85rem',
+                cursor: isScanning ? 'not-allowed' : 'pointer',
+                boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)',
+                opacity: isScanning ? 0.7 : 1
+              }}
+            >
+              <RefreshCw size={15} className={isScanning ? 'animate-spin' : ''} />
+              {isScanning ? 'Scanning All...' : 'Scan All Channels'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -285,7 +428,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <h4 style={{ fontSize: '1rem', fontWeight: '800', color: '#ffffff' }}>
+                  <h4 style={{ fontSize: '1rem', fontWeight: '800', color: '#ffffff', margin: 0 }}>
                     {ch.name}
                   </h4>
                   <a
@@ -338,7 +481,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               </div>
             </div>
 
-            {/* Encircled Action Controls with Per-Channel Fetch Limit */}
+            {/* Action Controls */}
             <div style={{
               display: 'flex',
               alignItems: 'center',
@@ -372,6 +515,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                   <option value={3}>3 Videos</option>
                   <option value={5}>5 Videos</option>
                   <option value={10}>10 Videos</option>
+                  <option value={15}>15 Videos</option>
                 </select>
               </div>
 

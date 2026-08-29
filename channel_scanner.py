@@ -43,9 +43,10 @@ def get_channel_id_from_url(channel_url: str) -> Optional[str]:
     return None
 
 
-def get_latest_videos_from_rss(channel_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+def get_latest_videos_from_rss(channel_id: str, limit: int = 10, after_date: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Fetch the latest videos from a channel via public YouTube RSS feed (Free & No API key needed).
+    Supports optional `after_date` filtering (format: 'YYYY-MM-DD').
     Returns list of dicts: [{'video_id', 'title', 'published', 'link', 'author'}]
     """
     rss_url = f"https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}"
@@ -64,17 +65,28 @@ def get_latest_videos_from_rss(channel_id: str, limit: int = 10) -> List[Dict[st
             channel_title = channel_title_elem.text if channel_title_elem is not None else "YouTube Channel"
 
             entries = root.findall("atom:entry", ns)
-            for entry in entries[:limit]:
+            for entry in entries:
+                if len(videos) >= limit:
+                    break
+
                 video_id_elem = entry.find("yt:videoId", ns)
                 title_elem = entry.find("atom:title", ns)
                 published_elem = entry.find("atom:published", ns)
-                link_elem = entry.find("atom:link", ns)
 
                 if video_id_elem is not None and title_elem is not None:
+                    pub_text = published_elem.text if published_elem is not None else ""
+                    
+                    # If after_date filter is set, compare YYYY-MM-DD
+                    if after_date and pub_text:
+                        clean_pub_date = pub_text[:10]
+                        clean_after_date = after_date.strip()[:10]
+                        if clean_pub_date < clean_after_date:
+                            continue
+
                     videos.append({
                         "video_id": video_id_elem.text,
                         "title": title_elem.text,
-                        "published": published_elem.text if published_elem is not None else "",
+                        "published": pub_text,
                         "url": f"https://www.youtube.com/watch?v={video_id_elem.text}",
                         "channel_name": channel_title,
                         "channel_id": channel_id
@@ -82,3 +94,4 @@ def get_latest_videos_from_rss(channel_id: str, limit: int = 10) -> List[Dict[st
     except Exception as e:
         print(f"Error reading RSS for channel {channel_id}: {e}")
     return videos
+

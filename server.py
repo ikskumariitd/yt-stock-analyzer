@@ -77,6 +77,8 @@ class AddChannelRequest(BaseModel):
 class ScanRequest(BaseModel):
     target: str  # Video URL or Channel URL/Handle
     limit: int = 2
+    after_date: Optional[str] = None  # Optional YYYY-MM-DD
+
 
 
 def execute_video_analysis(video_id: str, channel_id: str = "", channel_name: str = "", force: bool = False):
@@ -369,7 +371,12 @@ async def trigger_scan(req: ScanRequest):
         if not ch_id:
             raise HTTPException(status_code=400, detail=f"Could not resolve channel: {target}")
         
-        videos = await asyncio.to_thread(get_latest_videos_from_rss, ch_id, limit=req.limit)
+        videos = await asyncio.to_thread(
+            get_latest_videos_from_rss,
+            channel_id=ch_id,
+            limit=req.limit,
+            after_date=req.after_date
+        )
         added = 0
         for v in videos:
             if scan_queue.enqueue_video(
@@ -386,7 +393,7 @@ async def trigger_scan(req: ScanRequest):
 
 
 @app.post("/api/scan-all")
-async def trigger_scan_all(limit: int = 2):
+async def trigger_scan_all(limit: int = 2, after_date: Optional[str] = None):
     channels = await asyncio.to_thread(db.get_channels)
     enabled_channels = [c for c in channels if c.get("enabled")]
     total_added = 0
@@ -395,7 +402,12 @@ async def trigger_scan_all(limit: int = 2):
         url = ch.get("url") or ch.get("handle")
         ch_id = ch.get("channel_id") or await asyncio.to_thread(get_channel_id_from_url, url)
         if ch_id:
-            videos = await asyncio.to_thread(get_latest_videos_from_rss, ch_id, limit=limit)
+            videos = await asyncio.to_thread(
+                get_latest_videos_from_rss,
+                channel_id=ch_id,
+                limit=limit,
+                after_date=after_date
+            )
             for v in videos:
                 if scan_queue.enqueue_video(
                     video_id=v["video_id"],
@@ -409,10 +421,12 @@ async def trigger_scan_all(limit: int = 2):
 
     scan_queue.trigger_worker()
 
+    date_msg = f" published after {after_date}" if after_date else ""
     return {
         "success": True,
-        "message": f"Enqueued {total_added} videos across {len(enabled_channels)} channels for sequential processing (1-at-a-time)."
+        "message": f"Enqueued {total_added} videos{date_msg} across {len(enabled_channels)} channels for sequential processing (1-at-a-time)."
     }
+
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
