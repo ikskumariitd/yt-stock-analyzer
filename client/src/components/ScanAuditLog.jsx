@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   CheckCircle2,
   XCircle,
@@ -12,7 +12,9 @@ import {
   Radio,
   Layers,
   ChevronRight,
-  TrendingUp
+  TrendingUp,
+  Loader2,
+  ListOrdered
 } from 'lucide-react';
 import { fetchScanAudit, rescanVideo } from '../api';
 
@@ -22,6 +24,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
     passed: 0,
     failed: 0,
     skipped: 0,
+    queued: 0,
     total_stocks_found: 0,
     items: []
   });
@@ -32,8 +35,8 @@ export default function ScanAuditLog({ onRescanTriggered }) {
   const [rescanningId, setRescanningId] = useState(null);
   const [actionMsg, setActionMsg] = useState(null);
 
-  const loadAuditLogs = useCallback(async () => {
-    setLoading(true);
+  const loadAuditLogs = useCallback(async (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     try {
       const data = await fetchScanAudit({
         status: statusFilter,
@@ -45,13 +48,25 @@ export default function ScanAuditLog({ onRescanTriggered }) {
     } catch (err) {
       console.error('Failed to fetch scan audit logs:', err);
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   }, [statusFilter, platformFilter, search]);
 
   useEffect(() => {
     loadAuditLogs();
   }, [loadAuditLogs]);
+
+  // Auto-poll when there are items in the queue
+  useEffect(() => {
+    const hasActiveQueue = auditData.queued > 0 || auditData.items.some(i => i.status === 'PROCESSING' || i.status === 'QUEUED');
+    if (!hasActiveQueue) return;
+
+    const timer = setInterval(() => {
+      loadAuditLogs(true);
+    }, 3000);
+
+    return () => clearInterval(timer);
+  }, [auditData.queued, auditData.items, loadAuditLogs]);
 
   const handleRescan = async (item) => {
     setRescanningId(item.video_id);
@@ -66,7 +81,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
       setActionMsg(`⚡ Re-scan enqueued for "${item.title.substring(0, 40)}..."`);
       setTimeout(() => setActionMsg(null), 4000);
       if (onRescanTriggered) onRescanTriggered();
-      setTimeout(loadAuditLogs, 1500);
+      setTimeout(() => loadAuditLogs(true), 800);
     } catch (err) {
       alert(`Re-scan failed: ${err.message}`);
     } finally {
@@ -76,6 +91,41 @@ export default function ScanAuditLog({ onRescanTriggered }) {
 
   const getStatusBadge = (status) => {
     switch (status?.toUpperCase()) {
+      case 'PROCESSING':
+        return (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '4px 10px',
+            borderRadius: '12px',
+            fontSize: '0.75rem',
+            fontWeight: '700',
+            background: 'rgba(99, 102, 241, 0.15)',
+            color: 'var(--color-brand, #6366f1)',
+            border: '1px solid rgba(99, 102, 241, 0.35)',
+            animation: 'pulse 2s infinite'
+          }}>
+            <Loader2 size={13} className="spin" /> PROCESSING
+          </span>
+        );
+      case 'QUEUED':
+        return (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '4px 10px',
+            borderRadius: '12px',
+            fontSize: '0.75rem',
+            fontWeight: '700',
+            background: 'rgba(245, 158, 11, 0.12)',
+            color: '#d97706',
+            border: '1px solid rgba(245, 158, 11, 0.25)'
+          }}>
+            <Clock size={13} /> QUEUED
+          </span>
+        );
       case 'SUCCESS':
       case 'PASS':
         return (
@@ -162,7 +212,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
       {/* Audit Stats Banner */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
         gap: '16px',
         marginBottom: '24px'
       }}>
@@ -190,10 +240,42 @@ export default function ScanAuditLog({ onRescanTriggered }) {
           </div>
           <div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
-              Total Scans
+              Total Scanned
             </div>
             <div style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--text-primary)' }}>
               {auditData.total}
+            </div>
+          </div>
+        </div>
+
+        {/* Queued / In Progress */}
+        <div style={{
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: '16px',
+          padding: '18px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px'
+        }}>
+          <div style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '12px',
+            background: auditData.queued > 0 ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-secondary)',
+            color: auditData.queued > 0 ? '#f59e0b' : 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            {auditData.queued > 0 ? <Loader2 size={20} className="spin" /> : <ListOrdered size={20} />}
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
+              Queued / Active
+            </div>
+            <div style={{ fontSize: '1.4rem', fontWeight: '800', color: auditData.queued > 0 ? '#f59e0b' : 'var(--text-primary)' }}>
+              {auditData.queued || 0}
             </div>
           </div>
         </div>
@@ -338,10 +420,17 @@ export default function ScanAuditLog({ onRescanTriggered }) {
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', marginRight: '4px' }}>
             Status:
           </span>
-          {['ALL', 'SUCCESS', 'FAILED', 'SKIPPED'].map((st) => (
+          {[
+            { id: 'ALL', label: 'All' },
+            { id: 'PROCESSING', label: '⚡ In Progress' },
+            { id: 'QUEUED', label: '⏳ Queued' },
+            { id: 'SUCCESS', label: '✅ Passed' },
+            { id: 'FAILED', label: '🔴 Failed' },
+            { id: 'SKIPPED', label: '⏭️ Skipped' }
+          ].map((st) => (
             <button
-              key={st}
-              onClick={() => setStatusFilter(st)}
+              key={st.id}
+              onClick={() => setStatusFilter(st.id)}
               style={{
                 padding: '6px 12px',
                 borderRadius: '8px',
@@ -349,11 +438,11 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                 fontSize: '0.75rem',
                 fontWeight: '600',
                 cursor: 'pointer',
-                background: statusFilter === st ? 'var(--color-brand)' : 'var(--bg-secondary)',
-                color: statusFilter === st ? '#ffffff' : 'var(--text-secondary)'
+                background: statusFilter === st.id ? 'var(--color-brand)' : 'var(--bg-secondary)',
+                color: statusFilter === st.id ? '#ffffff' : 'var(--text-secondary)'
               }}
             >
-              {st === 'ALL' ? 'All' : st === 'SUCCESS' ? 'Passed' : st === 'FAILED' ? 'Failed' : 'Skipped'}
+              {st.label}
             </button>
           ))}
         </div>
@@ -388,7 +477,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
 
           {/* Refresh Button */}
           <button
-            onClick={loadAuditLogs}
+            onClick={() => loadAuditLogs(false)}
             disabled={loading}
             title="Refresh Scan Audit Logs"
             style={{
@@ -449,7 +538,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em'
                 }}>
-                  <th style={{ padding: '14px 18px', fontWeight: '700' }}>Scan Time</th>
+                  <th style={{ padding: '14px 18px', fontWeight: '700' }}>Scan Time (Desc)</th>
                   <th style={{ padding: '14px 18px', fontWeight: '700' }}>Platform</th>
                   <th style={{ padding: '14px 18px', fontWeight: '700' }}>Creator</th>
                   <th style={{ padding: '14px 18px', fontWeight: '700' }}>Video / Reel Title</th>
@@ -464,14 +553,27 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                     key={item.id || idx}
                     style={{
                       borderBottom: '1px solid var(--border-subtle)',
+                      background: item.status === 'PROCESSING' ? 'rgba(99, 102, 241, 0.04)' : 'transparent',
                       transition: 'background 0.15s ease'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-secondary)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    onMouseEnter={(e) => {
+                      if (item.status !== 'PROCESSING') e.currentTarget.style.background = 'var(--bg-secondary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (item.status !== 'PROCESSING') e.currentTarget.style.background = 'transparent';
+                    }}
                   >
                     {/* Timestamp */}
                     <td style={{ padding: '14px 18px', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                      {item.scanned_at ? new Date(item.scanned_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                      {item.status === 'PROCESSING' ? (
+                        <span style={{ color: 'var(--color-brand)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Loader2 size={12} className="spin" /> Right Now
+                        </span>
+                      ) : item.status === 'QUEUED' ? (
+                        <span style={{ color: '#d97706', fontWeight: '600' }}>In Queue</span>
+                      ) : item.scanned_at ? (
+                        new Date(item.scanned_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                      ) : 'Recent'}
                     </td>
 
                     {/* Platform Badge */}
@@ -563,7 +665,15 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                     {/* Stocks Found */}
                     <td style={{ padding: '14px 18px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                        {item.tickers && item.tickers.length > 0 ? (
+                        {item.status === 'PROCESSING' ? (
+                          <span style={{ color: 'var(--color-brand)', fontSize: '0.75rem', fontWeight: '600' }}>
+                            Analyzing with Gemini...
+                          </span>
+                        ) : item.status === 'QUEUED' ? (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                            Waiting in line
+                          </span>
+                        ) : item.tickers && item.tickers.length > 0 ? (
                           item.tickers.map((tk) => (
                             <span
                               key={tk}
@@ -590,36 +700,42 @@ export default function ScanAuditLog({ onRescanTriggered }) {
 
                     {/* Actions */}
                     <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button
-                        onClick={() => handleRescan(item)}
-                        disabled={rescanningId === item.video_id}
-                        title="Trigger a fresh re-scan of this video"
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          padding: '5px 10px',
-                          borderRadius: '8px',
-                          border: '1px solid var(--border-subtle)',
-                          background: 'var(--bg-secondary)',
-                          color: 'var(--text-secondary)',
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'var(--color-brand)';
-                          e.currentTarget.style.color = '#ffffff';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'var(--bg-secondary)';
-                          e.currentTarget.style.color = 'var(--text-secondary)';
-                        }}
-                      >
-                        <RotateCcw size={12} className={rescanningId === item.video_id ? 'spin' : ''} />
-                        {rescanningId === item.video_id ? 'Scanning...' : 'Re-Scan'}
-                      </button>
+                      {item.status === 'PROCESSING' || item.status === 'QUEUED' ? (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          In Progress
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleRescan(item)}
+                          disabled={rescanningId === item.video_id}
+                          title="Trigger a fresh re-scan of this video"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '5px 10px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border-subtle)',
+                            background: 'var(--bg-secondary)',
+                            color: 'var(--text-secondary)',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--color-brand)';
+                            e.currentTarget.style.color = '#ffffff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--bg-secondary)';
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                          }}
+                        >
+                          <RotateCcw size={12} className={rescanningId === item.video_id ? 'spin' : ''} />
+                          {rescanningId === item.video_id ? 'Scanning...' : 'Re-Scan'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

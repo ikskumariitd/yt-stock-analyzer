@@ -277,6 +277,19 @@ class SequentialScanQueue:
             self._current_item = None
             self.log("🏁 All queued videos processed. Worker idle.")
 
+    def get_queued_items(self) -> List[Dict[str, Any]]:
+        """Returns currently processing and queued items for live audit inspection."""
+        items = []
+        if self._current_item:
+            curr = asdict(self._current_item)
+            curr["status"] = "PROCESSING"
+            items.append(curr)
+        for q in self._queue:
+            q_dict = asdict(q)
+            q_dict["status"] = "QUEUED"
+            items.append(q_dict)
+        return items
+
     def get_status(self) -> Dict[str, Any]:
         """Returns the current queue status for polling."""
         curr = asdict(self._current_item) if self._current_item else None

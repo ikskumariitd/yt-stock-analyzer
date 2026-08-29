@@ -523,8 +523,8 @@ async def get_scan_audit(
     limit: int = 100,
     offset: int = 0
 ):
-    """Retrieves the history/audit log of all scanned videos & reels."""
-    return await asyncio.to_thread(
+    """Retrieves the history/audit log of all scanned videos & reels, including in-progress/queued."""
+    audit_data = await asyncio.to_thread(
         db.get_scan_audit_logs,
         status=status,
         platform=platform,
@@ -532,6 +532,38 @@ async def get_scan_audit(
         limit=limit,
         offset=offset
     )
+
+    # Prepend any currently processing or queued items
+    active_queue = scan_queue.get_queued_items()
+    filtered_queue = []
+    for item in active_queue:
+        if status and status.upper() not in ["ALL", item["status"]]:
+            continue
+        if platform and platform.lower() not in ["all", item.get("platform", "youtube").lower()]:
+            continue
+        if search:
+            s_low = search.lower()
+            if s_low not in item.get("title", "").lower() and s_low not in item.get("channel_name", "").lower():
+                continue
+        
+        filtered_queue.append({
+            "id": f"q_{item['video_id']}",
+            "video_id": item["video_id"],
+            "channel_name": item.get("channel_name") or "Creator",
+            "title": item.get("title") or f"Video {item['video_id']}",
+            "video_url": item.get("raw_url") or (f"https://www.instagram.com/reel/{item['video_id'].replace('ig_', '')}/" if item.get("platform") == "instagram" else f"https://www.youtube.com/watch?v={item['video_id']}"),
+            "platform": item.get("platform") or "youtube",
+            "status": item["status"],  # 'PROCESSING' or 'QUEUED'
+            "stocks_count": 0,
+            "tickers": [],
+            "error_message": None,
+            "duration_seconds": 0,
+            "scanned_at": datetime.fromtimestamp(item.get("enqueued_at", time.time())).isoformat()
+        })
+
+    audit_data["queued"] = len(active_queue)
+    audit_data["items"] = filtered_queue + audit_data.get("items", [])
+    return audit_data
 
 
 class RescanRequest(BaseModel):
