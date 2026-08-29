@@ -304,30 +304,31 @@ def sync_live_youtube_subscriptions():
 
 
 @app.get("/api/scan/status")
-def get_scan_status():
+async def get_scan_status():
     return scan_queue.get_status()
 
 
 @app.post("/api/queue/clear")
-def clear_scan_queue():
+async def clear_scan_queue():
     scan_queue.clear_queue()
     return {"success": True, "message": "Scan queue cleared successfully."}
 
 
 @app.post("/api/scan")
-def trigger_scan(req: ScanRequest):
+async def trigger_scan(req: ScanRequest):
     target = req.target.strip()
     video_id = extract_video_id(target)
     
     if video_id:
         scan_queue.enqueue_video(video_id=video_id, title=f"Video {video_id}")
+        scan_queue.trigger_worker()
         return {"success": True, "message": f"Enqueued video for sequential scan: {video_id}"}
     else:
-        ch_id = get_channel_id_from_url(target)
+        ch_id = await asyncio.to_thread(get_channel_id_from_url, target)
         if not ch_id:
             raise HTTPException(status_code=400, detail=f"Could not resolve channel: {target}")
         
-        videos = get_latest_videos_from_rss(ch_id, limit=req.limit)
+        videos = await asyncio.to_thread(get_latest_videos_from_rss, ch_id, limit=req.limit)
         added = 0
         for v in videos:
             if scan_queue.enqueue_video(
@@ -337,21 +338,22 @@ def trigger_scan(req: ScanRequest):
                 title=v.get("title", "")
             ):
                 added += 1
-        db.update_channel_scan_time(target)
+        await asyncio.to_thread(db.update_channel_scan_time, target)
+        scan_queue.trigger_worker()
         return {"success": True, "message": f"Enqueued {added} recent videos from {target} (1-by-1 mode)."}
 
 
 @app.post("/api/scan-all")
-def trigger_scan_all(limit: int = 2):
-    channels = db.get_channels()
+async def trigger_scan_all(limit: int = 2):
+    channels = await asyncio.to_thread(db.get_channels)
     enabled_channels = [c for c in channels if c.get("enabled")]
     total_added = 0
 
     for ch in enabled_channels:
         url = ch.get("url") or ch.get("handle")
-        ch_id = ch.get("channel_id") or get_channel_id_from_url(url)
+        ch_id = ch.get("channel_id") or await asyncio.to_thread(get_channel_id_from_url, url)
         if ch_id:
-            videos = get_latest_videos_from_rss(ch_id, limit=limit)
+            videos = await asyncio.to_thread(get_latest_videos_from_rss, ch_id, limit=limit)
             for v in videos:
                 if scan_queue.enqueue_video(
                     video_id=v["video_id"],
@@ -360,12 +362,14 @@ def trigger_scan_all(limit: int = 2):
                     title=v.get("title", "")
                 ):
                     total_added += 1
-            db.update_channel_scan_time(url)
+            await asyncio.to_thread(db.update_channel_scan_time, url)
 
+    scan_queue.trigger_worker()
     return {
         "success": True,
         "message": f"Enqueued {total_added} videos across {len(enabled_channels)} channels for sequential processing (1-at-a-time)."
     }
+
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
