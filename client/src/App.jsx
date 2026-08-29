@@ -67,40 +67,50 @@ export default function App() {
     loadData();
   }, [loadData]);
 
-  // Poll scan status every 3.5 seconds without causing full-page reloads
+  // Initial check on mount
   useEffect(() => {
-    let lastCompleted = 0;
-    let wasScanning = false;
+    fetchScanStatus()
+      .then(status => setScanStatus(status))
+      .catch(() => {});
+  }, []);
+
+  // Poll status ONLY when a scan is actively running, stop completely when idle
+  useEffect(() => {
+    if (!scanStatus?.is_scanning) return;
+
+    let lastCompleted = scanStatus?.completed_count || 0;
 
     const interval = setInterval(async () => {
       try {
         const status = await fetchScanStatus();
         setScanStatus(status);
 
-        // Only refresh data when a video finishes or when the scan transitions from active to complete
-        if (status.completed_count > lastCompleted || (wasScanning && !status.is_scanning)) {
+        // Silent refresh when an item completes or when the entire queue finishes
+        if (status.completed_count > lastCompleted || !status.is_scanning) {
           lastCompleted = status.completed_count;
-          loadData(true); // Silent background reload
+          loadData(true);
         }
-        wasScanning = status.is_scanning;
       } catch (err) {
         // Ignore background poll errors
       }
-    }, 3500);
-    return () => clearInterval(interval);
-  }, [loadData]);
+    }, 3000);
 
+    return () => clearInterval(interval);
+  }, [scanStatus?.is_scanning, loadData]);
 
   const handleTriggerScanAll = async (limit = 2) => {
     try {
       await triggerScanAll(limit);
       alert('Batch scan started for all enabled channels!');
+      // Immediately set is_scanning true to activate polling
+      setScanStatus(prev => ({ ...prev, is_scanning: true }));
       const status = await fetchScanStatus();
       setScanStatus(status);
     } catch (err) {
       alert(err.message);
     }
   };
+
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
