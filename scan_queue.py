@@ -125,11 +125,25 @@ class SequentialScanQueue:
                     item.finished_at = time.time()
                     self._completed_in_batch += 1
                     self.log(f"⚡ [Skipped - Already in DB]: {item.title}")
+                    
+                    v_url = item.raw_url or (f"https://www.instagram.com/reel/{item.video_id.replace('ig_', '')}/" if item.platform == "instagram" else f"https://www.youtube.com/watch?v={item.video_id}")
+                    await asyncio.to_thread(
+                        db.log_scan_audit,
+                        video_id=item.video_id,
+                        channel_name=item.channel_name,
+                        title=item.title,
+                        video_url=v_url,
+                        platform=item.platform,
+                        status="SKIPPED",
+                        error_message="Already processed in database (deduplicated)"
+                    )
+                    
                     self._current_item = None
                     await asyncio.sleep(0.3)
                     continue
 
                 self.log(f"⏳ Processing [{self._completed_in_batch + 1}/{self._total_batch_size}]: '{item.title}'...")
+                item_start_time = time.time()
 
                 try:
                     if item.platform == "instagram":
@@ -171,6 +185,18 @@ class SequentialScanQueue:
                             item.status = "failed"
                             item.error = t_data.get("error", "No transcript available")
                             self.log(f"⚠️ Transcript unavailable for '{item.title}': {item.error}")
+                            
+                            await asyncio.to_thread(
+                                db.log_scan_audit,
+                                video_id=item.video_id,
+                                channel_name=item.channel_name,
+                                title=item.title,
+                                video_url=f"https://www.youtube.com/watch?v={item.video_id}",
+                                platform="youtube",
+                                status="FAILED",
+                                error_message=item.error,
+                                duration_seconds=time.time() - item_start_time
+                            )
                             continue
 
                         ch_name = item.channel_name or t_data.get("author", "YouTube Creator")
@@ -197,12 +223,41 @@ class SequentialScanQueue:
                         )
 
                     item.status = "completed"
+                    v_url = (ig_data.get("url") or target_url) if item.platform == "instagram" else f"https://www.youtube.com/watch?v={item.video_id}"
+                    tickers = [r.ticker for r in summary.recommendations]
+                    
+                    await asyncio.to_thread(
+                        db.log_scan_audit,
+                        video_id=item.video_id,
+                        channel_name=ch_name,
+                        title=item.title,
+                        video_url=v_url,
+                        platform=item.platform,
+                        status="SUCCESS",
+                        stocks_count=len(summary.recommendations),
+                        tickers=tickers,
+                        duration_seconds=time.time() - item_start_time
+                    )
+                    
                     self.log(f"✓ Extracted and saved {len(summary.recommendations)} stock calls from '{item.title}'!")
 
                 except Exception as e:
                     item.status = "failed"
                     item.error = str(e)
                     self.log(f"❌ Error processing '{item.title}': {str(e)}")
+                    
+                    v_url = item.raw_url or (f"https://www.instagram.com/reel/{item.video_id.replace('ig_', '')}/" if item.platform == "instagram" else f"https://www.youtube.com/watch?v={item.video_id}")
+                    await asyncio.to_thread(
+                        db.log_scan_audit,
+                        video_id=item.video_id,
+                        channel_name=item.channel_name,
+                        title=item.title,
+                        video_url=v_url,
+                        platform=item.platform,
+                        status="FAILED",
+                        error_message=str(e),
+                        duration_seconds=time.time() - item_start_time
+                    )
 
                 item.finished_at = time.time()
                 self._completed_in_batch += 1

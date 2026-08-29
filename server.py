@@ -515,6 +515,53 @@ async def trigger_scan_all(limit: int = 2, after_date: Optional[str] = None):
     }
 
 
+@app.get("/api/scan/audit")
+async def get_scan_audit(
+    status: Optional[str] = None,
+    platform: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0
+):
+    """Retrieves the history/audit log of all scanned videos & reels."""
+    return await asyncio.to_thread(
+        db.get_scan_audit_logs,
+        status=status,
+        platform=platform,
+        search=search,
+        limit=limit,
+        offset=offset
+    )
+
+
+class RescanRequest(BaseModel):
+    video_id: str
+    url: Optional[str] = None
+    channel_name: Optional[str] = None
+    title: Optional[str] = None
+    platform: Optional[str] = "youtube"
+
+
+@app.post("/api/scan/rescan")
+async def trigger_rescan(req: RescanRequest):
+    """Forces re-scanning of a specific video or reel."""
+    with db.get_connection() as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM videos WHERE video_id = ?", (req.video_id,))
+        c.execute("DELETE FROM recommendations WHERE video_id = ?", (req.video_id,))
+        conn.commit()
+
+    scan_queue.enqueue_video(
+        video_id=req.video_id,
+        channel_name=req.channel_name or "Creator",
+        title=req.title or f"Rescan {req.video_id}",
+        platform=req.platform or "youtube",
+        raw_url=req.url or ""
+    )
+    scan_queue.trigger_worker()
+    return {"success": True, "message": f"Enqueued {req.video_id} for fresh re-scan."}
+
+
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path

@@ -96,6 +96,24 @@ def init_db():
         except sqlite3.OperationalError:
             pass
 
+        # Scan Audit Log Table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS scan_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            video_id TEXT NOT NULL,
+            channel_name TEXT,
+            title TEXT,
+            video_url TEXT,
+            platform TEXT DEFAULT 'youtube',
+            status TEXT DEFAULT 'SUCCESS', -- 'SUCCESS', 'FAILED', 'SKIPPED'
+            stocks_count INTEGER DEFAULT 0,
+            tickers_json TEXT, -- JSON array of tickers
+            error_message TEXT,
+            duration_seconds REAL DEFAULT 0,
+            scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
         # Performance Indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_ticker ON recommendations(ticker);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_published ON recommendations(published_at);")
@@ -103,6 +121,9 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_sentiment ON recommendations(sentiment);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_videos_channel ON videos(channel_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_channels_enabled ON channels(enabled);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_scanned ON scan_audit_log(scanned_at);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_status ON scan_audit_log(status);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_video ON scan_audit_log(video_id);")
         conn.commit()
 
 
@@ -492,6 +513,136 @@ def get_stats() -> Dict[str, Any]:
             "active_channels": active_channels,
             "sentiment_distribution": sentiment_dist,
             "top_tickers": top_tickers
+        }
+
+
+def log_scan_audit(
+    video_id: str,
+    channel_name: str = "",
+    title: str = "",
+    video_url: str = "",
+    platform: str = "youtube",
+    status: str = "SUCCESS",
+    stocks_count: int = 0,
+    tickers: Optional[List[str]] = None,
+    error_message: Optional[str] = None,
+    duration_seconds: float = 0.0
+):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+        INSERT INTO scan_audit_log (
+            video_id, channel_name, title, video_url, platform,
+            status, stocks_count, tickers_json, error_message, duration_seconds, scanned_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, (
+            video_id,
+            channel_name,
+            title,
+            video_url,
+            platform,
+            status,
+            stocks_count,
+            json.dumps(tickers or []),
+            error_message,
+            round(duration_seconds, 2)
+        ))
+        conn.commit()
+
+
+def get_scan_audit_logs(
+    status: Optional[str] = None,
+    platform: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0
+) -> Dict[str, Any]:
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        
+        # Auto backfill from videos table if audit log is empty
+        cursor.execute("SELECT COUNT(*) FROM scan_audit_log")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("""
+            SELECT v.video_id, v.channel_name, v.title, v.video_url, v.platform, v.processed_at
+            FROM videos v
+            ORDER BY v.processed_at DESC
+            """)
+            videos = cursor.fetchall()
+            for v in videos:
+                v_dict = dict(v)
+                vid = v_dict["video_id"]
+                cursor.execute("SELECT ticker FROM recommendations WHERE video_id = ?", (vid,))
+                tickers = list(dict.fromkeys([r[0] for r in cursor.fetchall()]))
+                cursor.execute("""
+                INSERT INTO scan_audit_log (
+                    video_id, channel_name, title, video_url, platform,
+                    status, stocks_count, tickers_json, error_message, scanned_at
+                ) VALUES (?, ?, ?, ?, ?, 'SUCCESS', ?, ?, NULL, ?)
+                """, (
+                    vid,
+                    v_dict["channel_name"],
+                    v_dict["title"],
+                    v_dict["video_url"],
+                    v_dict["platform"] or "youtube",
+                    len(tickers),
+                    json.dumps(tickers),
+                    v_dict["processed_at"] or datetime.now().isoformat()
+                ))
+            conn.commit()
+
+        query = "SELECT * FROM scan_audit_log WHERE 1=1"
+        params = []
+
+        if status and status.upper() != "ALL":
+            query += " AND status = ?"
+            params.append(status.upper())
+
+        if platform and platform.lower() != "all":
+            query += " AND platform = ?"
+            params.append(platform.lower())
+
+        if search:
+            query += " AND (title LIKE ? OR channel_name LIKE ? OR tickers_json LIKE ? OR video_id LIKE ?)"
+            s_param = f"%{search}%"
+            params.extend([s_param, s_param, s_param, s_param])
+
+        # Get total count
+        count_query = query.replace("SELECT *", "SELECT COUNT(*)", 1)
+        cursor.execute(count_query, params)
+        total = cursor.fetchone()[0]
+
+        # Summary statistics
+        cursor.execute("SELECT COUNT(*) FROM scan_audit_log WHERE status = 'SUCCESS'")
+        passed_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM scan_audit_log WHERE status = 'FAILED'")
+        failed_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM scan_audit_log WHERE status = 'SKIPPED'")
+        skipped_count = cursor.fetchone()[0]
+        cursor.execute("SELECT SUM(stocks_count) FROM scan_audit_log")
+        total_stocks_found = cursor.fetchone()[0] or 0
+
+        # Fetch items
+        query += " ORDER BY id DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+        cursor.execute(query, params)
+        
+        items = []
+        for row in cursor.fetchall():
+            item = dict(row)
+            try:
+                item["tickers"] = json.loads(item.get("tickers_json") or "[]")
+            except Exception:
+                item["tickers"] = []
+            items.append(item)
+
+        return {
+            "total": total,
+            "passed": passed_count,
+            "failed": failed_count,
+            "skipped": skipped_count,
+            "total_stocks_found": total_stocks_found,
+            "items": items
         }
 
 

@@ -7,6 +7,7 @@ import StockDetailModal from './components/StockDetailModal';
 import ChannelManager from './components/ChannelManager';
 import ScanModal from './components/ScanModal';
 import ConsensusView from './components/ConsensusView';
+import ScanAuditLog from './components/ScanAuditLog';
 import {
   fetchRecommendations,
   fetchConsensus,
@@ -287,6 +288,13 @@ export default function App() {
             onRefresh={loadData}
             onTriggerScanAll={handleTriggerScanAll}
             isScanning={scanStatus?.is_scanning}
+          />
+        )}
+
+        {/* Tab 3: Scan Audit & History */}
+        {activeTab === 'audit' && (
+          <ScanAuditLog
+            onRescanTriggered={loadData}
           />
         )}
       </main>

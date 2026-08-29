@@ -109,7 +109,26 @@ export default function Header({ activeTab, setActiveTab, onOpenScanModal, isSca
               color: activeTab === 'channels' ? '#ffffff' : 'var(--text-secondary)'
             }}
           >
-            <Tv size={16} /> Subscribed Channels
+            <Tv size={16} /> Creators
+          </button>
+          <button
+            onClick={() => setActiveTab('audit')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              fontSize: '0.85rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              background: activeTab === 'audit' ? 'var(--color-brand)' : 'transparent',
+              color: activeTab === 'audit' ? '#ffffff' : 'var(--text-secondary)'
+            }}
+          >
+            <Sparkles size={16} /> Scan Audit & History
           </button>
         </nav>
 

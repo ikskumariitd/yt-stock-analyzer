@@ -100,10 +100,39 @@ export async function fetchScanStatus() {
 }
 
 export async function clearScanQueue() {
-  const res = await fetch(`${API_BASE}/queue/clear`, {
-    method: 'POST'
+  const res = await fetch(`${API_BASE}/scan/queue`, {
+    method: 'DELETE'
   });
-  if (!res.ok) throw new Error('Failed to clear queue');
+  if (!res.ok) throw new Error('Failed to clear scan queue');
+  return res.json();
+}
+
+export async function fetchScanAudit({ status, platform, search, limit = 100, offset = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (status && status !== 'ALL') params.append('status', status);
+  if (platform && platform !== 'ALL') params.append('platform', platform);
+  if (search) params.append('search', search);
+  params.append('limit', limit);
+  params.append('offset', offset);
+
+  const res = await fetch(`${API_BASE}/scan/audit?${params.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch scan audit logs');
+  return res.json();
+}
+
+export async function rescanVideo({ videoId, url, channelName, title, platform }) {
+  const res = await fetch(`${API_BASE}/scan/rescan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      video_id: videoId,
+      url,
+      channel_name: channelName,
+      title,
+      platform
+    })
+  });
+  if (!res.ok) throw new Error('Failed to trigger rescan');
   return res.json();
 }
 
