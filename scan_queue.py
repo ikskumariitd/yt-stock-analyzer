@@ -145,129 +145,132 @@ class SequentialScanQueue:
 
                 self.log(f"⏳ Processing [{self._completed_in_batch + 1}/{self._total_batch_size}]: '{item.title}'...")
                 item_start_time = time.time()
+                
+                max_attempts = 3
+                success = False
+                last_err = None
 
-                try:
-                    if item.platform == "instagram":
-                        # Instagram Reel / Post extraction
-                        target_url = item.raw_url or f"https://www.instagram.com/reel/{item.video_id.replace('ig_', '')}/"
-                        ig_data = await asyncio.to_thread(extract_instagram_post_metadata_and_audio, target_url, item.caption)
-                        if not ig_data.get("success"):
-                            raise RuntimeError(ig_data.get("error", "Instagram extraction failed"))
+                for attempt in range(1, max_attempts + 1):
+                    try:
+                        if item.platform == "instagram":
+                            # Instagram Reel / Post extraction
+                            target_url = item.raw_url or f"https://www.instagram.com/reel/{item.video_id.replace('ig_', '')}/"
+                            ig_data = await asyncio.to_thread(extract_instagram_post_metadata_and_audio, target_url, item.caption)
+                            if not ig_data.get("success"):
+                                raise RuntimeError(ig_data.get("error", "Instagram extraction failed"))
 
-                        ch_name = item.channel_name or ig_data.get("author", "Instagram Creator")
-                        item.title = ig_data.get("title", item.title)
-                        if item.caption:
-                            ig_data["caption"] = item.caption
+                            ch_name = item.channel_name or ig_data.get("author", "Instagram Creator")
+                            item.title = ig_data.get("title", item.title)
+                            if item.caption:
+                                ig_data["caption"] = item.caption
 
-                        self.log(f"🧠 Extracting stock calls with Gemini for Instagram Post/Reel '{item.title}'...")
-                        summary = await asyncio.to_thread(analyze_instagram_media_with_gemini, ig_data)
-                        if not summary:
-                            raise RuntimeError("Gemini extraction returned empty result")
+                            self.log(f"🧠 Extracting stock calls with Gemini for Instagram Post/Reel '{item.title}'...")
+                            summary = await asyncio.to_thread(analyze_instagram_media_with_gemini, ig_data)
+                            if not summary:
+                                raise RuntimeError("Gemini extraction returned empty result")
 
-                        await asyncio.to_thread(
-                            db.save_video_analysis,
-                            video_id=item.video_id,
-                            channel_id=item.channel_id or ig_data.get("author", ""),
-                            channel_name=ch_name,
-                            title=item.title,
-                            published_at=item.published_at or ig_data.get("published_at", ""),
-                            video_url=ig_data.get("url") or target_url,
-                            market_outlook=summary.market_outlook,
-                            summary_text=summary.creator_summary,
-                            macro_takeaways=summary.macro_key_takeaways,
-                            recommendations=summary.recommendations,
-                            platform="instagram"
-                        )
-
-                    else:
-                        # YouTube Video extraction
-                        t_data = await asyncio.to_thread(get_video_transcript, item.video_id)
-                        if not t_data.get("success"):
-                            item.status = "failed"
-                            item.error = t_data.get("error", "No transcript available")
-                            self.log(f"⚠️ Transcript unavailable for '{item.title}': {item.error}")
-                            
                             await asyncio.to_thread(
-                                db.log_scan_audit,
+                                db.save_video_analysis,
                                 video_id=item.video_id,
-                                channel_name=item.channel_name,
+                                channel_id=item.channel_id or ig_data.get("author", ""),
+                                channel_name=ch_name,
                                 title=item.title,
-                                video_url=f"https://www.youtube.com/watch?v={item.video_id}",
-                                platform="youtube",
-                                published_at=item.published_at or t_data.get("published_at", ""),
-                                status="FAILED",
-                                error_message=item.error,
-                                duration_seconds=time.time() - item_start_time
+                                published_at=item.published_at or ig_data.get("published_at", ""),
+                                video_url=ig_data.get("url") or target_url,
+                                market_outlook=summary.market_outlook,
+                                summary_text=summary.creator_summary,
+                                macro_takeaways=summary.macro_key_takeaways,
+                                recommendations=summary.recommendations,
+                                platform="instagram"
                             )
-                            continue
 
-                        ch_name = item.channel_name or t_data.get("author", "YouTube Creator")
-                        item.title = t_data.get("title", item.title)
-
-                        if t_data.get("audio_fallback") and t_data.get("audio_path"):
-                            self.log(f"🎙️ Running Gemini Audio extraction for '{item.title}' (IP-block resilient fallback)...")
-                            summary = await asyncio.to_thread(
-                                analyze_instagram_media_with_gemini,
-                                {
-                                    "title": item.title,
-                                    "author": ch_name,
-                                    "caption": f"YouTube video audio track: {item.title}",
-                                    "media_path": t_data["audio_path"]
-                                }
-                            )
-                            # Cleanup temp audio
-                            try:
-                                if os.path.exists(t_data["audio_path"]):
-                                    os.remove(t_data["audio_path"])
-                            except Exception:
-                                pass
                         else:
-                            self.log(f"🧠 Extracting stock calls with Gemini for '{item.title}'...")
-                            summary = await asyncio.to_thread(analyze_transcript_with_gemini, t_data)
+                            # YouTube Video extraction
+                            t_data = await asyncio.to_thread(get_video_transcript, item.video_id)
+                            if not t_data.get("success"):
+                                raise RuntimeError(t_data.get("error", "No transcript available"))
 
-                        if not summary:
-                            raise RuntimeError("Gemini extraction returned empty result")
+                            ch_name = item.channel_name or t_data.get("author", "YouTube Creator")
+                            item.title = t_data.get("title", item.title)
 
-                        pub_date = item.published_at or t_data.get("published_at", "")
+                            if t_data.get("audio_fallback") and t_data.get("audio_path"):
+                                self.log(f"🎙️ Running Gemini Audio extraction for '{item.title}' (IP-block resilient fallback)...")
+                                summary = await asyncio.to_thread(
+                                    analyze_instagram_media_with_gemini,
+                                    {
+                                        "title": item.title,
+                                        "author": ch_name,
+                                        "caption": f"YouTube video audio track: {item.title}",
+                                        "media_path": t_data["audio_path"]
+                                    }
+                                )
+                                # Cleanup temp audio
+                                try:
+                                    if os.path.exists(t_data["audio_path"]):
+                                        os.remove(t_data["audio_path"])
+                                except Exception:
+                                    pass
+                            else:
+                                self.log(f"🧠 Extracting stock calls with Gemini for '{item.title}'...")
+                                summary = await asyncio.to_thread(analyze_transcript_with_gemini, t_data)
+
+                            if not summary:
+                                raise RuntimeError("Gemini extraction returned empty result")
+
+                            pub_date = item.published_at or t_data.get("published_at", "")
+                            await asyncio.to_thread(
+                                db.save_video_analysis,
+                                video_id=item.video_id,
+                                channel_id=item.channel_id,
+                                channel_name=ch_name,
+                                title=item.title,
+                                published_at=pub_date,
+                                video_url=f"https://www.youtube.com/watch?v={item.video_id}",
+                                market_outlook=summary.market_outlook,
+                                summary_text=summary.creator_summary,
+                                macro_takeaways=summary.macro_key_takeaways,
+                                recommendations=summary.recommendations,
+                                platform="youtube"
+                            )
+
+                        item.status = "completed"
+                        v_url = (ig_data.get("url") or target_url) if item.platform == "instagram" else f"https://www.youtube.com/watch?v={item.video_id}"
+                        tickers = [r.ticker for r in summary.recommendations]
+                        
                         await asyncio.to_thread(
-                            db.save_video_analysis,
+                            db.log_scan_audit,
                             video_id=item.video_id,
-                            channel_id=item.channel_id,
                             channel_name=ch_name,
                             title=item.title,
-                            published_at=pub_date,
-                            video_url=f"https://www.youtube.com/watch?v={item.video_id}",
-                            market_outlook=summary.market_outlook,
-                            summary_text=summary.creator_summary,
-                            macro_takeaways=summary.macro_key_takeaways,
-                            recommendations=summary.recommendations,
-                            platform="youtube"
+                            video_url=v_url,
+                            platform=item.platform,
+                            published_at=item.published_at or (ig_data.get("published_at") if item.platform == "instagram" else t_data.get("published_at")),
+                            status="SUCCESS",
+                            stocks_count=len(summary.recommendations),
+                            tickers=tickers,
+                            duration_seconds=time.time() - item_start_time
                         )
+                        
+                        self.log(f"✓ Extracted and saved {len(summary.recommendations)} stock calls from '{item.title}'!")
+                        success = True
+                        break
 
-                    item.status = "completed"
-                    v_url = (ig_data.get("url") or target_url) if item.platform == "instagram" else f"https://www.youtube.com/watch?v={item.video_id}"
-                    tickers = [r.ticker for r in summary.recommendations]
-                    
-                    await asyncio.to_thread(
-                        db.log_scan_audit,
-                        video_id=item.video_id,
-                        channel_name=ch_name,
-                        title=item.title,
-                        video_url=v_url,
-                        platform=item.platform,
-                        published_at=item.published_at or (ig_data.get("published_at") if item.platform == "instagram" else t_data.get("published_at")),
-                        status="SUCCESS",
-                        stocks_count=len(summary.recommendations),
-                        tickers=tickers,
-                        duration_seconds=time.time() - item_start_time
-                    )
-                    
-                    self.log(f"✓ Extracted and saved {len(summary.recommendations)} stock calls from '{item.title}'!")
+                    except Exception as e:
+                        last_err = e
+                        err_msg = str(e)
+                        is_rate_limit = any(term in err_msg.lower() for term in ["429", "resource_exhausted", "quota", "too many requests", "rate limit", "blocking requests"])
+                        
+                        if attempt < max_attempts and is_rate_limit:
+                            backoff_seconds = 15 * (2 ** (attempt - 1))  # 15s, 30s, 60s
+                            self.log(f"⚠️ Rate limit detected on '{item.title}'. Exponential backoff: Waiting {backoff_seconds}s before retry (Attempt {attempt}/{max_attempts})...")
+                            await asyncio.sleep(backoff_seconds)
+                        else:
+                            break
 
-                except Exception as e:
+                if not success:
                     item.status = "failed"
-                    item.error = str(e)
-                    self.log(f"❌ Error processing '{item.title}': {str(e)}")
+                    item.error = str(last_err)
+                    self.log(f"❌ Error processing '{item.title}': {str(last_err)}")
                     
                     v_url = item.raw_url or (f"https://www.instagram.com/reel/{item.video_id.replace('ig_', '')}/" if item.platform == "instagram" else f"https://www.youtube.com/watch?v={item.video_id}")
                     await asyncio.to_thread(
@@ -279,7 +282,7 @@ class SequentialScanQueue:
                         platform=item.platform,
                         published_at=item.published_at,
                         status="FAILED",
-                        error_message=str(e),
+                        error_message=str(last_err),
                         duration_seconds=time.time() - item_start_time
                     )
 
@@ -287,10 +290,11 @@ class SequentialScanQueue:
                 self._completed_in_batch += 1
                 self._current_item = None
 
-                # Free-Tier 3s Cooldown between videos
+                # Gentle pacing between videos
                 if self._queue:
-                    self.log("☕ Cooldown 3s before next video (Free Tier safe)...")
-                    await asyncio.sleep(3)
+                    cooldown = 6
+                    self.log(f"☕ Cooldown {cooldown}s before next video (rate-limit safe pacing)...")
+                    await asyncio.sleep(cooldown)
 
         except Exception as general_err:
             self.log(f"Worker exception: {general_err}")
