@@ -964,21 +964,48 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                       ) : item.status === 'QUEUED' ? (
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>—</span>
                       ) : (
-                        <span style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '2px 7px',
-                          borderRadius: '6px',
-                          fontSize: '0.7rem',
-                          fontWeight: '700',
-                          background: item.model_used && item.model_used.includes('3.6') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.08)',
-                          color: item.model_used && item.model_used.includes('3.6') ? '#059669' : '#4f46e5',
-                          border: item.model_used && item.model_used.includes('3.6') ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(99, 102, 241, 0.2)'
-                        }}>
-                          <Sparkles size={10} color={item.model_used && item.model_used.includes('3.6') ? '#059669' : '#6366f1'} />
-                          {item.model_used || 'gemini-3.5-flash-lite'}
-                        </span>
+                        (() => {
+                          const m = item.model_used || 'gemini-3.5-flash-lite';
+                          let bg = 'rgba(99, 102, 241, 0.08)';
+                          let color = '#4f46e5';
+                          let border = '1px solid rgba(99, 102, 241, 0.2)';
+                          let iconColor = '#6366f1';
+
+                          if (m.includes('3.7')) {
+                            bg = 'linear-gradient(135deg, rgba(147, 51, 234, 0.12) 0%, rgba(6, 182, 212, 0.12) 100%)';
+                            color = '#9333ea';
+                            border = '1px solid rgba(147, 51, 234, 0.3)';
+                            iconColor = '#9333ea';
+                          } else if (m.includes('3.6')) {
+                            bg = 'rgba(16, 185, 129, 0.1)';
+                            color = '#059669';
+                            border = '1px solid rgba(16, 185, 129, 0.25)';
+                            iconColor = '#059669';
+                          } else if (m.includes('3.5-flash-lite') || m.includes('lite')) {
+                            bg = 'rgba(245, 158, 11, 0.1)';
+                            color = '#d97706';
+                            border = '1px solid rgba(245, 158, 11, 0.25)';
+                            iconColor = '#d97706';
+                          }
+
+                          return (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '2px 7px',
+                              borderRadius: '6px',
+                              fontSize: '0.7rem',
+                              fontWeight: '700',
+                              background: bg,
+                              color: color,
+                              border: border
+                            }}>
+                              <Sparkles size={10} color={iconColor} />
+                              {m}
+                            </span>
+                          );
+                        })()
                       )}
                     </td>
 
