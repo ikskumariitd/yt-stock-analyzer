@@ -146,7 +146,7 @@ def get_video_transcript(video_id: str, preferred_languages: List[str] = None) -
     except Exception as e:
         # Auto Fallback to Direct YouTube Audio Extraction with yt-dlp + Gemini Multimodal
         err_msg = str(e)
-        print(f"⚠️ YouTubeTranscriptApi unavailable for {video_id} ({err_msg[:80]}...). Attempting Gemini Audio Fallback with yt-dlp...")
+        print(f"[FALLBACK] YouTubeTranscriptApi unavailable for {video_id} ({err_msg[:60]}...). Attempting Gemini Audio Fallback with yt-dlp...")
         
         audio_info = download_youtube_audio_fallback(video_id)
         if audio_info and audio_info.get("audio_path"):
