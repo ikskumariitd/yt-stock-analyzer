@@ -10,16 +10,14 @@ import {
   syncLiveYoutubeSubscriptions
 } from '../api';
 
-
-export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, isScanning }) {
+export default function ChannelManager({ channels = [], onRefresh, onTriggerScanAll, isScanning }) {
   const [newHandle, setNewHandle] = useState('');
   const [newName, setNewName] = useState('');
-  const [scanLimit, setScanLimit] = useState(3);
+  const [scanLimit, setScanLimit] = useState(2);
   const [channelLimits, setChannelLimits] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authStatus, setAuthStatus] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState('');
 
   // Fetch YouTube OAuth live status
   useEffect(() => {
@@ -28,18 +26,25 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
       .catch(() => setAuthStatus(null));
   }, []);
 
-  const handleSyncSubscriptions = async () => {
+  const handleLiveSync = async () => {
+    if (!authStatus?.connected) {
+      window.location.href = '/api/auth/youtube/login';
+      return;
+    }
+
+    setIsSyncing(true);
     try {
-      setIsSyncing(true);
-      setSyncMessage('Connecting to YouTube API and fetching subscriptions...');
       const res = await syncLiveYoutubeSubscriptions();
-      setSyncMessage(`✓ Synced ${res.channels_count} channels successfully!`);
+      alert(res.message || 'Synced successfully!');
       onRefresh();
     } catch (err) {
-      setSyncMessage(`⚠️ Error syncing: ${err.message}`);
+      if (err.message && (err.message.includes('401') || err.message.includes('connect'))) {
+        window.location.href = '/api/auth/youtube/login';
+      } else {
+        alert(err.message);
+      }
     } finally {
       setIsSyncing(false);
-      setTimeout(() => setSyncMessage(''), 6000);
     }
   };
 
@@ -49,7 +54,7 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
 
     try {
       setIsSubmitting(true);
-      await addChannel(newHandle.trim(), newName.trim());
+      await addChannel(newHandle.trim(), newName.trim() || undefined);
       setNewHandle('');
       setNewName('');
       onRefresh();
@@ -89,7 +94,6 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
     }
   };
 
-
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
       {/* Top Banner & Batch Scan */}
@@ -107,7 +111,7 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
           {/* Live YouTube Account Sync Button */}
           <button
             onClick={handleLiveSync}
-            disabled={isSyncingLive}
+            disabled={isSyncing}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -121,19 +125,19 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
               borderRadius: '8px',
               fontWeight: '700',
               fontSize: '0.85rem',
-              cursor: isSyncingLive ? 'not-allowed' : 'pointer',
+              cursor: isSyncing ? 'not-allowed' : 'pointer',
               boxShadow: authStatus?.connected ? 'none' : '0 4px 14px rgba(239, 68, 68, 0.3)',
               transition: 'all 0.15s ease'
             }}
           >
-            {isSyncingLive ? (
+            {isSyncing ? (
               <RefreshCw size={16} className="animate-spin" />
             ) : authStatus?.connected ? (
               <Check size={16} />
             ) : (
               <Link2 size={16} />
             )}
-            {isSyncingLive
+            {isSyncing
               ? 'Syncing with YouTube...'
               : authStatus?.connected
               ? '✓ Live Synced with YouTube'
@@ -151,7 +155,9 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
                 color: '#ffffff',
                 padding: '6px 10px',
                 borderRadius: '6px',
-                fontSize: '0.8rem'
+                fontSize: '0.8rem',
+                outline: 'none',
+                cursor: 'pointer'
               }}
             >
               <option value={1}>Latest 1 Video</option>
@@ -199,7 +205,7 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
             onChange={e => setNewHandle(e.target.value)}
             required
             style={{
-              flex: '2 1 250px',
+              flex: '2 1 240px',
               padding: '10px 14px',
               background: 'rgba(2, 6, 23, 0.7)',
               border: '1px solid var(--border-subtle)',
@@ -428,7 +434,6 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
             </div>
           </div>
         ))}
-
       </div>
     </div>
   );
