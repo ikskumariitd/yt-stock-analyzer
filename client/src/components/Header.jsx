@@ -16,7 +16,7 @@ export default function Header({ activeTab, setActiveTab, onOpenScanModal, isSca
       transition: 'background-color 0.2s ease'
     }}>
       <div style={{
-        maxWidth: '1680px',
+        maxWidth: '100%',
         width: '100%',
         margin: '0 auto',
         display: 'flex',
