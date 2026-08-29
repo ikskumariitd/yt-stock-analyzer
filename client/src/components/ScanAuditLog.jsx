@@ -64,17 +64,14 @@ export default function ScanAuditLog({ onRescanTriggered }) {
     loadAuditLogs();
   }, [loadAuditLogs]);
 
-  // Auto-poll when there are items in the queue
+  // Auto-poll audit logs continuously every 3.5s so all queued and active items show up instantly
   useEffect(() => {
-    const hasActiveQueue = auditData.queued > 0 || auditData.items.some(i => i.status === 'PROCESSING' || i.status === 'QUEUED');
-    if (!hasActiveQueue) return;
-
     const timer = setInterval(() => {
       loadAuditLogs(true);
-    }, 3000);
+    }, 3500);
 
     return () => clearInterval(timer);
-  }, [auditData.queued, auditData.items, loadAuditLogs]);
+  }, [loadAuditLogs]);
 
   const handleRescan = async (item) => {
     setRescanningId(item.video_id);

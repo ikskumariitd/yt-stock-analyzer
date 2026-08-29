@@ -15,6 +15,7 @@ if sys.platform == "win32":
         sys.stderr.reconfigure(encoding="utf-8")
     except Exception:
         pass
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, Query, BackgroundTasks, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -558,7 +559,7 @@ async def get_scan_audit(
             "tickers": [],
             "error_message": None,
             "duration_seconds": 0,
-            "scanned_at": datetime.fromtimestamp(item.get("enqueued_at", time.time())).isoformat()
+            "scanned_at": datetime.fromtimestamp(item.get("enqueued_at", time.time()), tz=timezone.utc).isoformat()
         })
 
     audit_data["queued"] = len(active_queue)
