@@ -77,8 +77,9 @@ export default function StockDetailModal({ recommendation, onClose }) {
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
             <span className="font-mono" style={{ fontSize: '2rem', fontWeight: '800', color: '#ffffff' }}>
-              ${r.ticker}
+              {r.ticker}
             </span>
+
             <span className="badge badge-buy" style={{ fontSize: '0.85rem' }}>
               {r.sentiment}
             </span>

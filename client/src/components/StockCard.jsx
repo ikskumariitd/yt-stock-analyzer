@@ -54,12 +54,13 @@ export default function StockCard({ recommendation, onOpenDetail }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
               <span className="font-mono" style={{ fontSize: '1.4rem', fontWeight: '800', color: '#ffffff' }}>
-                ${r.ticker}
+                {r.ticker}
               </span>
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
                 {r.market || 'US'}
               </span>
             </div>
+
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500', marginTop: '2px' }}>
               {r.company_name}
             </p>

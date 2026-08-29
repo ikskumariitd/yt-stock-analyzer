@@ -137,8 +137,9 @@ export default function StatsOverview({ stats, onSelectTicker }) {
                 e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
               }}
             >
-              ${t.ticker}
+              {t.ticker}
             </button>
+
           ))}
         </div>
       </div>

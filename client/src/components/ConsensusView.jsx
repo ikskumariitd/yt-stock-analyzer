@@ -102,8 +102,9 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                   letterSpacing: '0.05em',
                   boxShadow: '0 4px 14px rgba(99, 102, 241, 0.2)'
                 }}>
-                  ${stock.ticker}
+                  {stock.ticker}
                 </div>
+
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                     <h3 style={{ fontSize: '1.3rem', fontWeight: '800', color: '#ffffff', letterSpacing: '-0.01em' }}>
@@ -184,7 +185,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                   gap: '8px'
                 }}>
                   <Video size={14} color="#818cf8" />
-                  Creator Timeline & Breakdown for ${stock.ticker}:
+                  Creator Timeline & Breakdown for {stock.ticker}:
                 </div>
 
                 {/* Vertical Timeline Track Container */}
@@ -271,8 +272,9 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                               letterSpacing: '0.04em',
                               boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
                             }}>
-                              ${call.ticker || stock.ticker}
+                              {call.ticker || stock.ticker}
                             </span>
+
 
                             <span style={{
                               padding: '4px 10px',
