@@ -106,11 +106,10 @@ Extract all stock recommendations, buy levels, targets, stop-losses, and investm
                     raw_text = raw_text[:-3]
                 raw_text = raw_text.strip()
 
-                if not raw_text:
-                    raise ValueError("Gemini returned empty response text")
-
                 parsed_json = json.loads(raw_text)
-                return VideoStockSummary.model_validate(parsed_json)
+                summary = VideoStockSummary.model_validate(parsed_json)
+                summary.model_used = current_model
+                return summary
 
             except Exception as err:
                 last_error = err
@@ -206,7 +205,9 @@ Listen to the spoken audio and extract every mentioned stock/ticker, sentiment, 
                 raise ValueError("Gemini returned empty response text")
 
             parsed_json = json.loads(raw_text)
-            return VideoStockSummary.model_validate(parsed_json)
+            summary = VideoStockSummary.model_validate(parsed_json)
+            summary.model_used = current_model
+            return summary
 
         except Exception as err:
             last_error = err

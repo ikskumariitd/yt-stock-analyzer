@@ -256,6 +256,7 @@ class SequentialScanQueue:
                             video_url=v_url,
                             platform=item.platform,
                             published_at=item.published_at or (ig_data.get("published_at") if item.platform == "instagram" else t_data.get("published_at")),
+                            model_used=getattr(summary, "model_used", "gemini-3.5-flash-lite"),
                             status="SUCCESS",
                             stocks_count=len(summary.recommendations),
                             tickers=tickers,

@@ -17,7 +17,8 @@ import {
   ListOrdered,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Sparkles
 } from 'lucide-react';
 import { fetchScanAudit, rescanVideo } from '../api';
 import { formatSingaporeAuditTime, formatSingaporeDate, parseUtcDate } from '../utils/timeUtils';
@@ -704,6 +705,22 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                     </div>
                   </th>
 
+                  {/* AI Model Header */}
+                  <th
+                    onClick={() => handleHeaderClick('model_used')}
+                    style={{
+                      padding: '14px 18px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      color: sortField === 'model_used' ? 'var(--color-brand)' : 'var(--text-muted)'
+                    }}
+                    title="Click to sort by Gemini Model Used"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      AI MODEL {renderSortIcon('model_used')}
+                    </div>
+                  </th>
+
                   {/* Stocks Found Header */}
                   <th
                     onClick={() => handleHeaderClick('stocks_count')}
@@ -850,6 +867,44 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                     {/* Status */}
                     <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                       {getStatusBadge(item.status)}
+                    </td>
+
+                    {/* AI Model Badge */}
+                    <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                      {item.status === 'PROCESSING' ? (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.72rem',
+                          fontWeight: '700',
+                          background: 'rgba(99, 102, 241, 0.1)',
+                          color: 'var(--color-brand)',
+                          border: '1px solid rgba(99, 102, 241, 0.25)'
+                        }}>
+                          <Loader2 size={10} className="spin" /> Selecting
+                        </span>
+                      ) : item.status === 'QUEUED' ? (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
+                      ) : (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.72rem',
+                          fontWeight: '700',
+                          background: item.model_used && item.model_used.includes('3.6') ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.08)',
+                          color: item.model_used && item.model_used.includes('3.6') ? '#059669' : '#4f46e5',
+                          border: item.model_used && item.model_used.includes('3.6') ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(99, 102, 241, 0.2)'
+                        }}>
+                          <Sparkles size={11} color={item.model_used && item.model_used.includes('3.6') ? '#059669' : '#6366f1'} />
+                          {item.model_used || 'gemini-3.5-flash-lite'}
+                        </span>
+                      )}
                     </td>
 
                     {/* Stocks Found */}

@@ -120,6 +120,11 @@ def init_db():
         except sqlite3.OperationalError:
             pass
 
+        try:
+            cursor.execute("ALTER TABLE scan_audit_log ADD COLUMN model_used TEXT DEFAULT 'gemini-3.5-flash-lite';")
+        except sqlite3.OperationalError:
+            pass
+
         # App Settings Table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS app_settings (
@@ -549,6 +554,7 @@ def log_scan_audit(
     video_url: str = "",
     platform: str = "youtube",
     published_at: Optional[str] = None,
+    model_used: Optional[str] = "gemini-3.5-flash-lite",
     status: str = "SUCCESS",
     stocks_count: int = 0,
     tickers: Optional[List[str]] = None,
@@ -559,9 +565,9 @@ def log_scan_audit(
         cursor = conn.cursor()
         cursor.execute("""
         INSERT INTO scan_audit_log (
-            video_id, channel_name, title, video_url, platform, published_at,
+            video_id, channel_name, title, video_url, platform, published_at, model_used,
             status, stocks_count, tickers_json, error_message, duration_seconds, scanned_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         """, (
             video_id,
             channel_name,
@@ -569,6 +575,7 @@ def log_scan_audit(
             video_url,
             platform,
             published_at,
+            model_used or "gemini-3.5-flash-lite",
             status,
             stocks_count,
             json.dumps(tickers or []),

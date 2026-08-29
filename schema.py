@@ -73,3 +73,7 @@ class VideoStockSummary(BaseModel):
         default_factory=list,
         description="Key macroeconomic, sector, or market-wide insights discussed in the video.",
     )
+    model_used: Optional[str] = Field(
+        default="gemini-3.5-flash-lite",
+        description="Gemini model that performed extraction."
+    )
