@@ -59,9 +59,12 @@ flowchart TD
 - **Force IPv4 Resolution**: On Windows systems, always enforce IPv4 socket resolution (`urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET`) to prevent `[WinError 10051]` unrouted IPv6 socket failures.
 - **UTF-8 Console Reconfiguration**: Ensure `sys.stdout.reconfigure(encoding="utf-8")` is invoked on Windows to prevent `UnicodeEncodeError` when printing emojis or special characters.
 
-### 3. Frontend & Styling Rules
+### 3. Frontend & Presentation Modes
+- **Consensus Radar View (`/api/consensus`)**: Groups recommendations by stock ticker to show consensus sentiment, price targets, and full creator breakdown timelines chronologically.
+- **Per-Channel Fetch Limits**: Each channel allows individual depth controls (1, 2, 3, 5, 10 videos) before queuing.
+- **Tracked Badges**: Visual indicator on each channel card for `X Videos Tracked` and `Y Stock Picks Extracted`.
 - **No Tailwind CSS**: Use pure Vanilla CSS with design tokens defined in `client/src/index.css` (dark-mode glassmorphic aesthetics, glowing pill badges, smooth transitions).
-- **Interactive Time-Jumping**: Recommendation cards and deep-dive modals must preserve the `timestamp_reference` field and render clickable links in format `https://youtube.com/watch?v=VIDEO_ID&t=SECONDSs`.
+- **Interactive Time-Jumping**: Recommendation cards and deep-dive modals preserve the `timestamp_reference` field and render clickable links in format `https://youtube.com/watch?v=VIDEO_ID&t=SECONDSs`.
 
 ### 4. Secret & Git Hygiene
 - **Never commit credentials**: `.env`, `client_secret.json`, `youtube_token.json`, and `stocks.db` must remain strictly ignored in `.gitignore`.
@@ -85,11 +88,17 @@ npm install
 npm run build
 ```
 
-### Running CLI Quick Scans
-```powershell
-# Analyze a specific YouTube video:
-python poc_analyzer.py --url "https://www.youtube.com/watch?v=VIDEO_ID"
+### API Endpoints Reference
+- `GET /api/recommendations` - Query stock calls with search, sentiment, channel, market filters.
+- `GET /api/consensus` - Clubbed consensus radar grouped by stock ticker.
+- `GET /api/stats` - Total picks, active channels, sentiment distribution.
+- `GET /api/channels` - List monitored channels with analyzed video counts.
+- `POST /api/channels` - Add a new creator by YouTube handle or URL.
+- `DELETE /api/channels/{id}` - Remove a creator from monitoring.
+- `POST /api/scan` - Enqueue videos from a target URL with depth limit.
+- `POST /api/scan-all` - Enqueue batch scan across all enabled creators.
+- `GET /api/scan/status` - Live polling status for the sequential worker.
+- `POST /api/queue/clear` - Stop active scan and clear queue.
+- `GET /api/auth/youtube/login` - Start Google OAuth flow for YouTube subscriptions.
+- `POST /api/auth/youtube/sync` - Sync YouTube subscriptions into monitored channels.
 
-# Scan a specific channel:
-python poc_analyzer.py --channel "@MeetKevin" --limit 2
-```
