@@ -13,7 +13,9 @@ const DATE_OPTIONS = [
   { id: '30', label: '⏱️ 30 Days (1 Mo)' },
   { id: '7', label: '7 Days' },
   { id: '90', label: '90 Days (3 Mo)' },
-  { id: 'ALL', label: 'All Time' },
+  { id: 'YTD', label: 'YTD' },
+  { id: '365', label: '1 Year' },
+  { id: 'ALL', label: 'Max (All Time)' },
 ];
 
 const SORT_OPTIONS = [

@@ -330,9 +330,20 @@ def query_recommendations(
             query += " AND market = ?"
             params.append(market)
 
-        if days and int(days) > 0:
-            query += " AND date(COALESCE(NULLIF(published_at, ''), created_at)) >= date('now', ?)"
-            params.append(f"-{int(days)} days")
+        if days:
+            days_str = str(days).strip().upper()
+            if days_str == "YTD":
+                query += " AND date(COALESCE(NULLIF(published_at, ''), created_at)) >= date('now', 'start of year')"
+            elif days_str in ["1Y", "1 Y", "365"]:
+                query += " AND date(COALESCE(NULLIF(published_at, ''), created_at)) >= date('now', '-365 days')"
+            elif days_str not in ["ALL", "MAX", "NONE", ""]:
+                try:
+                    num_days = int(days_str)
+                    if num_days > 0:
+                        query += " AND date(COALESCE(NULLIF(published_at, ''), created_at)) >= date('now', ?)"
+                        params.append(f"-{num_days} days")
+                except ValueError:
+                    pass
 
         # Count total
         count_query = query.replace("SELECT *", "SELECT COUNT(*)")

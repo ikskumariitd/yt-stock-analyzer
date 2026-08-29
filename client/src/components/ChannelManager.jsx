@@ -98,11 +98,23 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
   };
 
   // Quick preset helper
-  const setQuickDateOffset = (daysAgo) => {
-    if (daysAgo === 0) {
+  const setQuickDateOffset = (type) => {
+    if (type === 0 || type === 'ALL' || type === 'MAX') {
       setScanAfterDate('');
       return;
     }
+    if (type === 'YTD') {
+      const startOfYear = `${new Date().getFullYear()}-01-01`;
+      setScanAfterDate(startOfYear);
+      return;
+    }
+    if (type === '1Y' || type === 365) {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - 1);
+      setScanAfterDate(d.toISOString().slice(0, 10));
+      return;
+    }
+    const daysAgo = Number(type);
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
     setScanAfterDate(d.toISOString().slice(0, 10));
@@ -232,8 +244,9 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
             </div>
 
             {/* Quick Date Chips */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
               <button
+                type="button"
                 onClick={() => setQuickDateOffset(1)}
                 style={{
                   background: 'var(--bg-input)',
@@ -249,6 +262,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 24h
               </button>
               <button
+                type="button"
                 onClick={() => setQuickDateOffset(7)}
                 style={{
                   background: 'var(--bg-input)',
@@ -264,6 +278,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 7 Days
               </button>
               <button
+                type="button"
                 onClick={() => setQuickDateOffset(30)}
                 style={{
                   background: 'var(--bg-input)',
@@ -279,7 +294,8 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 30 Days
               </button>
               <button
-                onClick={() => setQuickDateOffset(0)}
+                type="button"
+                onClick={() => setQuickDateOffset('YTD')}
                 style={{
                   background: 'var(--bg-input)',
                   border: '1px solid var(--border-subtle)',
@@ -288,10 +304,42 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                   borderRadius: '4px',
                   fontSize: '0.7rem',
                   cursor: 'pointer',
-                  fontWeight: '600'
+                  fontWeight: '700'
                 }}
               >
-                All
+                YTD
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickDateOffset('1Y')}
+                style={{
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-secondary)',
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.7rem',
+                  cursor: 'pointer',
+                  fontWeight: '700'
+                }}
+              >
+                1 Y
+              </button>
+              <button
+                type="button"
+                onClick={() => setQuickDateOffset('ALL')}
+                style={{
+                  background: !scanAfterDate ? 'var(--color-buy-bg)' : 'var(--bg-input)',
+                  border: !scanAfterDate ? '1px solid var(--color-buy)' : '1px solid var(--border-subtle)',
+                  color: !scanAfterDate ? 'var(--color-buy)' : 'var(--text-secondary)',
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.7rem',
+                  cursor: 'pointer',
+                  fontWeight: '700'
+                }}
+              >
+                Max (All)
               </button>
             </div>
           </div>
@@ -320,7 +368,8 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 <option value={3}>Latest 3 Videos</option>
                 <option value={5}>Latest 5 Videos</option>
                 <option value={10}>Latest 10 Videos</option>
-                <option value={15}>All in Feed (15)</option>
+                <option value={25}>Latest 25 Videos</option>
+                <option value={50}>Max Available (50)</option>
               </select>
             </div>
 

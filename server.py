@@ -190,7 +190,7 @@ def get_recommendations(
     sentiment: Optional[str] = Query(None, description="Sentiment filter: BUY, SELL, WATCHLIST, ACCUMULATE"),
     channel: Optional[str] = Query(None, description="Channel filter"),
     market: Optional[str] = Query(None, description="Market filter: US, India, etc."),
-    days: Optional[int] = Query(None, description="Filter within past N days (e.g. 7, 30, 90)"),
+    days: Optional[str] = Query(None, description="Filter within past N days, YTD, or ALL"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0)
 ):
@@ -212,7 +212,7 @@ def get_consensus(
     sentiment: Optional[str] = Query(None, description="Sentiment filter"),
     channel: Optional[str] = Query(None, description="Channel filter"),
     market: Optional[str] = Query(None, description="Market filter"),
-    days: Optional[int] = Query(None, description="Filter within past N days (e.g. 7, 30, 90)"),
+    days: Optional[str] = Query(None, description="Filter within past N days, YTD, or ALL"),
     sort_by: str = Query("mentions", description="Sort by: mentions, date, ticker, bullish")
 ):
     return db.query_consensus(
