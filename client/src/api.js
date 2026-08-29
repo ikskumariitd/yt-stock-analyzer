@@ -1,12 +1,13 @@
 const API_BASE = '/api';
 
-export async function fetchRecommendations({ search, ticker, sentiment, channel, market, limit = 50, offset = 0 } = {}) {
+export async function fetchRecommendations({ search, ticker, sentiment, channel, market, days, limit = 50, offset = 0 } = {}) {
   const params = new URLSearchParams();
   if (search) params.append('search', search);
   if (ticker) params.append('ticker', ticker);
   if (sentiment && sentiment !== 'ALL') params.append('sentiment', sentiment);
   if (channel && channel !== 'ALL') params.append('channel', channel);
   if (market && market !== 'ALL') params.append('market', market);
+  if (days && days !== 'ALL') params.append('days', days);
   params.append('limit', limit);
   params.append('offset', offset);
 
@@ -15,17 +16,20 @@ export async function fetchRecommendations({ search, ticker, sentiment, channel,
   return res.json();
 }
 
-export async function fetchConsensus({ search, sentiment, channel, market } = {}) {
+export async function fetchConsensus({ search, sentiment, channel, market, days, sortBy = 'mentions' } = {}) {
   const params = new URLSearchParams();
   if (search) params.append('search', search);
   if (sentiment && sentiment !== 'ALL') params.append('sentiment', sentiment);
   if (channel && channel !== 'ALL') params.append('channel', channel);
   if (market && market !== 'ALL') params.append('market', market);
+  if (days && days !== 'ALL') params.append('days', days);
+  if (sortBy) params.append('sort_by', sortBy);
 
   const res = await fetch(`${API_BASE}/consensus?${params.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch consensus');
   return res.json();
 }
+
 
 export async function fetchStats() {
   const res = await fetch(`${API_BASE}/stats`);

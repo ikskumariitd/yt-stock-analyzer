@@ -36,6 +36,8 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [sentiment, setSentiment] = useState('ALL');
   const [channel, setChannel] = useState('ALL');
+  const [days, setDays] = useState('30'); // Default 1 month (30 days)
+  const [sortBy, setSortBy] = useState('mentions'); // Default most recommended first
   
   // Modals
   const [selectedStock, setSelectedStock] = useState(null);
@@ -46,8 +48,8 @@ export default function App() {
     try {
       if (!isSilent) setLoading(true);
       const [recsData, consensusList, statsData, channelsData] = await Promise.all([
-        fetchRecommendations({ search, sentiment, channel, limit: 100 }),
-        fetchConsensus({ search, sentiment, channel }),
+        fetchRecommendations({ search, sentiment, channel, days, limit: 100 }),
+        fetchConsensus({ search, sentiment, channel, days, sortBy }),
         fetchStats(),
         fetchChannels()
       ]);
@@ -61,7 +63,8 @@ export default function App() {
     } finally {
       if (!isSilent) setLoading(false);
     }
-  }, [search, sentiment, channel, viewMode]);
+  }, [search, sentiment, channel, days, sortBy, viewMode]);
+
 
   useEffect(() => {
     loadData();
@@ -222,11 +225,16 @@ export default function App() {
               setSentiment={setSentiment}
               channel={channel}
               setChannel={setChannel}
+              days={days}
+              setDays={setDays}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
               channelsList={channels}
               totalResults={totalCount}
               viewMode={viewMode}
               setViewMode={setViewMode}
             />
+
 
             {/* Recommendations or Consensus View */}
             {loading ? (
@@ -256,32 +264,33 @@ export default function App() {
                   Try resetting the search or sentiment filters, or trigger a new scan on your subscribed channels.
                 </p>
                 <button
-                  onClick={() => { setSearch(''); setSentiment('ALL'); setChannel('ALL'); }}
+                  onClick={() => { setSearch(''); setSentiment('ALL'); setChannel('ALL'); setDays('30'); setSortBy('mentions'); }}
                   style={{
-                    background: 'rgba(255, 255, 255, 0.08)',
-                    border: '1px solid var(--border-subtle)',
-                    color: '#ffffff',
-                    padding: '8px 16px',
+                    padding: '8px 18px',
                     borderRadius: '8px',
+                    background: 'var(--color-brand)',
+                    color: '#ffffff',
+                    border: 'none',
+                    fontWeight: '700',
                     fontSize: '0.85rem',
-                    fontWeight: '600',
                     cursor: 'pointer'
                   }}
                 >
-                  Reset Filters
+                  Reset All Filters
                 </button>
+
               </div>
             ) : (
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
                 gap: '20px'
               }}>
-                {recommendations.map(rec => (
+                {recommendations.map((rec, idx) => (
                   <StockCard
-                    key={rec.id}
+                    key={rec.id || idx}
                     recommendation={rec}
-                    onOpenDetail={setSelectedStock}
+                    onSelect={setSelectedStock}
                   />
                 ))}
               </div>

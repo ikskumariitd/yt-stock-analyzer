@@ -240,6 +240,7 @@ def query_recommendations(
     sentiment: Optional[str] = None,
     channel_name: Optional[str] = None,
     market: Optional[str] = None,
+    days: Optional[int] = None,
     limit: int = 50,
     offset: int = 0
 ) -> Dict[str, Any]:
@@ -266,10 +267,13 @@ def query_recommendations(
             query += " AND TRIM(channel_name) = ?"
             params.append(channel_name.strip())
 
-
         if market and market.upper() != "ALL":
             query += " AND market = ?"
             params.append(market)
+
+        if days and int(days) > 0:
+            query += " AND date(COALESCE(NULLIF(published_at, ''), created_at)) >= date('now', ?)"
+            params.append(f"-{int(days)} days")
 
         # Count total
         count_query = query.replace("SELECT *", "SELECT COUNT(*)")
@@ -286,18 +290,33 @@ def query_recommendations(
         results = []
         for r in rows:
             d = dict(r)
-            d["thesis"] = json.loads(d.get("thesis") or "[]")
-            d["risks"] = json.loads(d.get("risks") or "[]")
+            try:
+                d["thesis"] = json.loads(d.get("thesis") or "[]")
+            except Exception:
+                d["thesis"] = [d.get("thesis")] if d.get("thesis") else []
+            try:
+                d["risks"] = json.loads(d.get("risks") or "[]")
+            except Exception:
+                d["risks"] = [d.get("risks")] if d.get("risks") else []
             results.append(d)
 
-        return {"total": total, "items": results, "limit": limit, "offset": offset}
+        return {
+            "total": total,
+            "items": results,
+            "limit": limit,
+            "offset": offset
+        }
+
+
 
 
 def query_consensus(
     search: Optional[str] = None,
     sentiment: Optional[str] = None,
     channel_name: Optional[str] = None,
-    market: Optional[str] = None
+    market: Optional[str] = None,
+    days: Optional[int] = None,
+    sort_by: str = "mentions"
 ) -> List[Dict[str, Any]]:
     """Groups recommendations by stock ticker to show consensus across all creators."""
     all_recs = query_recommendations(
@@ -305,7 +324,8 @@ def query_consensus(
         sentiment=sentiment,
         channel_name=channel_name,
         market=market,
-        limit=500
+        days=days,
+        limit=1000
     ).get("items", [])
 
     grouped: Dict[str, Dict[str, Any]] = {}
@@ -376,12 +396,23 @@ def query_consensus(
             "calls": sorted_calls
         })
 
-    # Sort grouped stocks: highest mentions first, then newest date DESC
-    results.sort(
-        key=lambda x: (x["total_calls"], x["latest_date"] or ""),
-        reverse=True
-    )
+    # Sort grouped stocks based on sort_by
+    if sort_by == "date":
+        results.sort(key=lambda x: (x["latest_date"] or "", x["total_calls"]), reverse=True)
+    elif sort_by == "ticker":
+        results.sort(key=lambda x: x["ticker"])
+    elif sort_by == "bullish":
+        results.sort(key=lambda x: (
+            x["sentiment_counts"].get("STRONG_BUY", 0) + 
+            x["sentiment_counts"].get("BUY", 0) + 
+            x["sentiment_counts"].get("ACCUMULATE", 0),
+            x["total_calls"]
+        ), reverse=True)
+    else:  # Default: mentions (recommended by many authors first)
+        results.sort(key=lambda x: (x["total_calls"], x["unique_creators"], x["latest_date"] or ""), reverse=True)
+
     return results
+
 
 
 
