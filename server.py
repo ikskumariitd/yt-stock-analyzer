@@ -18,20 +18,30 @@ if sys.platform == "win32":
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, Query, BackgroundTasks, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
+import uvicorn
 
 import db
-from schema import VideoStockSummary
-from transcript_extractor import extract_video_id, get_video_transcript
-from channel_scanner import get_channel_id_from_url, get_latest_videos_from_rss
-from analyzer import analyze_transcript_with_gemini
-from scan_queue import scan_queue
 import youtube_oauth
-from fastapi.responses import RedirectResponse
+from transcript_extractor import extract_video_id, get_video_transcript
+from analyzer import analyze_transcript_with_gemini
+from channel_scanner import get_latest_videos_from_rss, get_channel_id_from_url
+from scan_queue import scan_queue
 
-app = FastAPI(title="YouTube Stock Intelligence API", version="1.0.0")
+# Initialize SQLite database
+db.init_db()
 
-# Enable CORS for React frontend (Vite dev server)
+app = FastAPI(
+    title="AlphaPulse YouTube Stock Intelligence API",
+    description="Automated system to ingest YouTube financial videos and extract actionable stock recommendations with key levels.",
+    version="1.0.0"
+)
+
+# Enable GZip compression for fast data transfer
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Enable CORS for frontend development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -39,6 +49,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # In-memory scan state
 scan_status = {

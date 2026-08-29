@@ -76,44 +76,70 @@ TRANSCRIPT WITH TIMESTAMPS:
 Extract all stock recommendations, buy levels, targets, stop-losses, and investment thesis into the structured schema.
 """
 
-    # Try modern google-genai SDK first
-    try:
-        from google import genai
-        from google.genai import types
-
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model=model_name,
-            contents=[user_prompt],
-            config=types.GenerateContentConfig(
-                system_instruction=EXTRACTION_SYSTEM_PROMPT,
-                response_mime_type="application/json",
-                response_schema=VideoStockSummary,
-                temperature=0.1,
-            ),
-        )
-        parsed_json = json.loads(response.text)
-        return VideoStockSummary.model_validate(parsed_json)
-
-    except Exception as modern_err:
-        # Fallback to google.generativeai SDK
+    # Try modern google-genai SDK first with retry backoff
+    for attempt in range(3):
         try:
-            import google.generativeai as legacy_genai
+            from google import genai
+            from google.genai import types
 
-            legacy_genai.configure(api_key=api_key)
-            model = legacy_genai.GenerativeModel(
-                model_name="gemini-1.5-flash",
-                system_instruction=EXTRACTION_SYSTEM_PROMPT,
-                generation_config={
-                    "response_mime_type": "application/json",
-                    "response_schema": VideoStockSummary,
-                    "temperature": 0.1,
-                }
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=[user_prompt],
+                config=types.GenerateContentConfig(
+                    system_instruction=EXTRACTION_SYSTEM_PROMPT,
+                    response_mime_type="application/json",
+                    response_schema=VideoStockSummary,
+                    temperature=0.1,
+                ),
             )
-            response = model.generate_content(user_prompt)
-            parsed_json = json.loads(response.text)
+            raw_text = response.text.strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:]
+            elif raw_text.startswith("```"):
+                raw_text = raw_text[3:]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
+            raw_text = raw_text.strip()
+
+            parsed_json = json.loads(raw_text)
             return VideoStockSummary.model_validate(parsed_json)
-        except Exception as legacy_err:
-            raise RuntimeError(
-                f"Gemini API execution failed. Modern SDK error: {modern_err} | Legacy SDK error: {legacy_err}"
-            )
+
+        except Exception as modern_err:
+            if "429" in str(modern_err) or "503" in str(modern_err):
+                import time
+                time.sleep(2 ** attempt)
+                continue
+
+            # Fallback to google.generativeai SDK
+            try:
+                import google.generativeai as legacy_genai
+
+                legacy_genai.configure(api_key=api_key)
+                model = legacy_genai.GenerativeModel(
+                    model_name="gemini-1.5-flash",
+                    system_instruction=EXTRACTION_SYSTEM_PROMPT,
+                    generation_config={
+                        "response_mime_type": "application/json",
+                        "response_schema": VideoStockSummary,
+                        "temperature": 0.1,
+                    }
+                )
+                response = model.generate_content(user_prompt)
+                raw_text = response.text.strip()
+                if raw_text.startswith("```json"):
+                    raw_text = raw_text[7:]
+                elif raw_text.startswith("```"):
+                    raw_text = raw_text[3:]
+                if raw_text.endswith("```"):
+                    raw_text = raw_text[:-3]
+                raw_text = raw_text.strip()
+
+                parsed_json = json.loads(raw_text)
+                return VideoStockSummary.model_validate(parsed_json)
+            except Exception as legacy_err:
+                if attempt == 2:
+                    raise RuntimeError(
+                        f"Gemini API extraction failed: {modern_err} (fallback: {legacy_err})"
+                    )
+

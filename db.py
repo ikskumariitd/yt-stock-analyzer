@@ -8,8 +8,11 @@ DB_PATH = Path("stocks.db")
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA synchronous=NORMAL;")
+    conn.execute("PRAGMA busy_timeout=5000;")
     return conn
 
 
@@ -76,11 +79,13 @@ def init_db():
         )
         """)
 
-        # Create indexes for fast filtering
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_rec_ticker ON recommendations(ticker);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_rec_sentiment ON recommendations(sentiment);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_rec_channel ON recommendations(channel_name);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_rec_created ON recommendations(created_at DESC);")
+        # Performance Indexes
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_ticker ON recommendations(ticker);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_published ON recommendations(published_at);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_channel ON recommendations(channel_name);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_sentiment ON recommendations(sentiment);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_videos_channel ON videos(channel_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_channels_enabled ON channels(enabled);")
         conn.commit()
 
 
