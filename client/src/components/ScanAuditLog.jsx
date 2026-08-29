@@ -214,6 +214,25 @@ export default function ScanAuditLog({ onRescanTriggered }) {
             <CheckCircle2 size={13} /> PASSED
           </span>
         );
+      case 'RERUN PASSED':
+      case 'RERUN_PASSED':
+      case 'PASSED (RERUN)':
+        return (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '4px 10px',
+            borderRadius: '12px',
+            fontSize: '0.75rem',
+            fontWeight: '700',
+            background: 'rgba(14, 165, 233, 0.12)',
+            color: '#0284c7',
+            border: '1px solid rgba(14, 165, 233, 0.3)'
+          }}>
+            <RotateCcw size={12} /> RERUN PASSED
+          </span>
+        );
       case 'FAILED':
       case 'FAIL':
         return (

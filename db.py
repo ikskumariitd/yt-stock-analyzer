@@ -144,6 +144,16 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_scanned ON scan_audit_log(scanned_at);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_status ON scan_audit_log(status);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_audit_video ON scan_audit_log(video_id);")
+
+        # Retroactive update: Mark any prior FAILED rows whose video subsequently succeeded as 'RERUN PASSED'
+        cursor.execute("""
+        UPDATE scan_audit_log
+        SET status = 'RERUN PASSED'
+        WHERE status = 'FAILED'
+          AND video_id IN (
+              SELECT video_id FROM scan_audit_log WHERE status = 'SUCCESS'
+          );
+        """)
         conn.commit()
 
 
@@ -563,6 +573,13 @@ def log_scan_audit(
 ):
     with get_connection() as conn:
         cursor = conn.cursor()
+        if status == "SUCCESS":
+            # Update prior failed scans for this video to 'RERUN PASSED'
+            cursor.execute(
+                "UPDATE scan_audit_log SET status = 'RERUN PASSED' WHERE video_id = ? AND status = 'FAILED'",
+                (video_id,)
+            )
+
         cursor.execute("""
         INSERT INTO scan_audit_log (
             video_id, channel_name, title, video_url, platform, published_at, model_used,
@@ -631,8 +648,11 @@ def get_scan_audit_logs(
         params = []
 
         if status and status.upper() != "ALL":
-            query += " AND status = ?"
-            params.append(status.upper())
+            if status.upper() in ["SUCCESS", "PASS", "PASSED"]:
+                query += " AND status IN ('SUCCESS', 'RERUN PASSED')"
+            else:
+                query += " AND status = ?"
+                params.append(status.upper())
 
         if platform and platform.lower() != "all":
             query += " AND platform = ?"
@@ -649,7 +669,7 @@ def get_scan_audit_logs(
         total = cursor.fetchone()[0]
 
         # Summary statistics
-        cursor.execute("SELECT COUNT(*) FROM scan_audit_log WHERE status = 'SUCCESS'")
+        cursor.execute("SELECT COUNT(*) FROM scan_audit_log WHERE status IN ('SUCCESS', 'RERUN PASSED')")
         passed_count = cursor.fetchone()[0]
         cursor.execute("SELECT COUNT(*) FROM scan_audit_log WHERE status = 'FAILED'")
         failed_count = cursor.fetchone()[0]
