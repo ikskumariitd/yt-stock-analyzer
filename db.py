@@ -127,12 +127,13 @@ def get_channels() -> List[Dict[str, Any]]:
         cursor.execute("""
         SELECT 
             c.*,
-            (SELECT COUNT(*) FROM videos v WHERE v.channel_id = c.channel_id OR v.channel_name = c.name) as analyzed_videos_count,
-            (SELECT COUNT(*) FROM recommendations r WHERE r.channel_name = c.name) as stock_picks_count
+            (SELECT COUNT(*) FROM videos v WHERE (v.channel_id IS NOT NULL AND v.channel_id != '' AND v.channel_id = c.channel_id) OR TRIM(v.channel_name) = TRIM(c.name)) as analyzed_videos_count,
+            (SELECT COUNT(*) FROM recommendations r WHERE TRIM(r.channel_name) = TRIM(c.name)) as stock_picks_count
         FROM channels c
         ORDER BY c.name ASC
         """)
         return [dict(row) for row in cursor.fetchall()]
+
 
 
 
@@ -262,8 +263,9 @@ def query_recommendations(
             params.append(sentiment.upper())
 
         if channel_name and channel_name.upper() != "ALL":
-            query += " AND channel_name = ?"
-            params.append(channel_name)
+            query += " AND TRIM(channel_name) = ?"
+            params.append(channel_name.strip())
+
 
         if market and market.upper() != "ALL":
             query += " AND market = ?"
