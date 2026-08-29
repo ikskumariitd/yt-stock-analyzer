@@ -20,6 +20,7 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { fetchScanAudit, rescanVideo } from '../api';
+import { formatSingaporeAuditTime } from '../utils/timeUtils';
 
 export default function ScanAuditLog({ onRescanTriggered }) {
   const [auditData, setAuditData] = useState({
@@ -731,7 +732,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                       ) : item.status === 'QUEUED' ? (
                         <span style={{ color: '#d97706', fontWeight: '600' }}>In Queue</span>
                       ) : item.scanned_at ? (
-                        new Date(item.scanned_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        formatSingaporeAuditTime(item.scanned_at)
                       ) : 'Recent'}
                     </td>
 

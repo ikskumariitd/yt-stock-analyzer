@@ -9,6 +9,7 @@ import {
   fetchYoutubeAuthStatus,
   syncLiveYoutubeSubscriptions
 } from '../api';
+import { formatSingaporeDateTime, formatSingaporeDate } from '../utils/timeUtils';
 
 export default function ChannelManager({ channels = [], onRefresh, onTriggerScanAll, isScanning }) {
   const [newHandle, setNewHandle] = useState('');
@@ -505,7 +506,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                   </span>
                   {ch.last_scanned_at && (
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                      • Last scanned: {new Date(ch.last_scanned_at).toLocaleDateString()}
+                      • Last scanned: {formatSingaporeDateTime(ch.last_scanned_at)}
                     </span>
                   )}
                 </div>

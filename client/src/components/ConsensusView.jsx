@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
+import { formatSingaporeDate } from '../utils/timeUtils';
 
 const SENTIMENT_COLORS = {
   STRONG_BUY: { bg: 'var(--color-buy-bg)', border: 'var(--color-buy-border)', text: 'var(--color-buy)', label: 'STRONG BUY', bar: '#10b981' },
@@ -289,9 +290,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                 }}>
                   {stock.calls.map((call, idx) => {
                     const sentStyle = SENTIMENT_COLORS[call.sentiment] || SENTIMENT_COLORS.BUY;
-                    const formattedDate = call.published_at
-                      ? new Date(call.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-                      : (call.created_at ? new Date(call.created_at).toLocaleDateString() : 'Recent');
+                    const formattedDate = formatSingaporeDate(call.published_at || call.created_at);
 
                     return (
                       <div
