@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   Video,
   Eye,
-  EyeOff
+  EyeOff,
+  Calendar
 } from 'lucide-react';
 import { formatSingaporeDate } from '../utils/timeUtils';
 
@@ -184,7 +185,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                     </span>
                     <span style={{ color: 'var(--text-muted)' }}>•</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Clock size={13} /> Latest: {stock.latest_date ? new Date(stock.latest_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recent'}
+                      <Calendar size={13} color="var(--color-brand)" /> Latest Upload: {formatSingaporeDate(stock.latest_date)}
                     </span>
                   </div>
                 </div>
@@ -355,7 +356,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                                 </span>
                               </div>
                               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                📅 Covered on {formattedDate}
+                                📅 Video Uploaded: {formattedDate}
                               </span>
                             </div>
                           </div>
