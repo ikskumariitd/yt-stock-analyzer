@@ -204,8 +204,27 @@ class SequentialScanQueue:
                         ch_name = item.channel_name or t_data.get("author", "YouTube Creator")
                         item.title = t_data.get("title", item.title)
 
-                        self.log(f"🧠 Extracting stock calls with Gemini for '{item.title}'...")
-                        summary = await asyncio.to_thread(analyze_transcript_with_gemini, t_data)
+                        if t_data.get("audio_fallback") and t_data.get("audio_path"):
+                            self.log(f"🎙️ Running Gemini Audio extraction for '{item.title}' (IP-block resilient fallback)...")
+                            summary = await asyncio.to_thread(
+                                analyze_instagram_media_with_gemini,
+                                {
+                                    "title": item.title,
+                                    "author": ch_name,
+                                    "caption": f"YouTube video audio track: {item.title}",
+                                    "media_path": t_data["audio_path"]
+                                }
+                            )
+                            # Cleanup temp audio
+                            try:
+                                if os.path.exists(t_data["audio_path"]):
+                                    os.remove(t_data["audio_path"])
+                            except Exception:
+                                pass
+                        else:
+                            self.log(f"🧠 Extracting stock calls with Gemini for '{item.title}'...")
+                            summary = await asyncio.to_thread(analyze_transcript_with_gemini, t_data)
+
                         if not summary:
                             raise RuntimeError("Gemini extraction returned empty result")
 

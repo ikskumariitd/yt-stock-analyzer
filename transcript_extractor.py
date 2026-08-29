@@ -143,24 +143,61 @@ def get_video_transcript(video_id: str, preferred_languages: List[str] = None) -
             "raw_segments": raw_segments,
         }
 
-    except TranscriptsDisabled:
-        return {
-            "success": False,
-            "video_id": video_id,
-            "title": metadata.get("title"),
-            "error": "Transcripts are disabled by the creator for this video.",
-        }
-    except NoTranscriptFound:
-        return {
-            "success": False,
-            "video_id": video_id,
-            "title": metadata.get("title"),
-            "error": "No subtitles or transcripts are available for this video.",
-        }
     except Exception as e:
+        # Auto Fallback to Direct YouTube Audio Extraction with yt-dlp + Gemini Multimodal
+        err_msg = str(e)
+        print(f"⚠️ YouTubeTranscriptApi unavailable for {video_id} ({err_msg[:80]}...). Attempting Gemini Audio Fallback with yt-dlp...")
+        
+        audio_info = download_youtube_audio_fallback(video_id)
+        if audio_info and audio_info.get("audio_path"):
+            return {
+                "success": True,
+                "video_id": video_id,
+                "title": audio_info.get("title") or metadata.get("title"),
+                "author": audio_info.get("author") or metadata.get("author"),
+                "audio_fallback": True,
+                "audio_path": audio_info["audio_path"],
+                "published_at": audio_info.get("published_at"),
+                "full_text": "[Direct Audio Processing via Gemini Multimodal]",
+                "timestamped_text": "[Direct Audio Processing via Gemini Multimodal]"
+            }
+
+        # If audio download also fails, return clean error message
+        reason = "YouTube IP Block (429)" if "blocking requests" in err_msg or "429" in err_msg else err_msg[:120]
         return {
             "success": False,
             "video_id": video_id,
             "title": metadata.get("title"),
-            "error": f"Failed to fetch transcript: {str(e)}",
+            "error": f"Transcript & Audio unavailable: {reason}",
         }
+
+
+def download_youtube_audio_fallback(video_id: str) -> Optional[Dict[str, Any]]:
+    """Downloads lightweight audio stream with yt-dlp when YouTube Transcript API is blocked."""
+    try:
+        import yt_dlp
+        import tempfile
+        import os
+
+        temp_dir = os.path.join(tempfile.gettempdir(), "alphapulse_yt_audio")
+        os.makedirs(temp_dir, exist_ok=True)
+        audio_path = os.path.join(temp_dir, f"yt_{video_id}.m4a")
+
+        ydl_opts = {
+            'format': 'bestaudio[ext=m4a]/bestaudio/best',
+            'outtmpl': audio_path,
+            'quiet': True,
+            'noplaylist': True,
+            'overwrites': True
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=True)
+            return {
+                "audio_path": audio_path,
+                "title": info.get("title"),
+                "author": info.get("uploader") or info.get("channel"),
+                "published_at": info.get("upload_date")
+            }
+    except Exception as dl_err:
+        print(f"yt-dlp fallback download failed: {dl_err}")
+        return None

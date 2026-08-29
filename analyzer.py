@@ -38,10 +38,10 @@ CRITICAL EXTRACTION GUIDELINES:
 
 # Cascade of fast, intelligent models for high free-tier resilience
 CASCADE_MODELS = [
-    "gemini-3.5-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3.6-flash",
-    "gemini-3.7-flash"
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite"
 ]
 
 
@@ -114,17 +114,14 @@ Extract all stock recommendations, buy levels, targets, stop-losses, and investm
             except Exception as err:
                 last_error = err
                 err_str = str(err)
-                print(f"[Gemini Model: {current_model}] Attempt {attempt + 1} failed: {err_str[:120]}")
-
-                # If rate limited (429), try quick wait or next cascade model
-                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str:
-                    time.sleep(2)
-                    continue
+                print(f"[Gemini Model: {current_model} (Attempt {attempt+1})] Failed: {err_str[:120]}")
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    time.sleep(2.5 * (attempt + 1))
                 else:
-                    break
+                    break  # Move to next model immediately for other errors
 
     raise RuntimeError(
-        f"All Gemini models in cascade failed to analyze transcript. Last error: {last_error}"
+        f"All Gemini models in cascade failed to analyze video. Last error: {last_error}"
     )
 
 
@@ -134,23 +131,23 @@ def analyze_instagram_media_with_gemini(
     model_name: Optional[str] = None
 ) -> VideoStockSummary:
     """
-    Sends Instagram Reel audio file + caption text to Gemini Multimodal for spoken stock extraction.
+    Sends Instagram Reel audio file + caption text (or YouTube fallback audio) to Gemini Multimodal for spoken stock extraction.
     """
     api_key = api_key or os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError("GEMINI_API_KEY not found.")
 
-    title = ig_data.get("title", "Instagram Financial Reel")
+    title = ig_data.get("title", "Financial Media")
     author = ig_data.get("author", "@creator")
     caption = ig_data.get("caption", "")
     media_path = ig_data.get("media_path")
 
-    prompt_text = f"""Analyze the audio & caption of this Instagram financial Reel and extract all stock calls:
+    prompt_text = f"""Analyze the audio & caption of this financial media and extract all stock calls:
 
 CREATOR / HANDLE: {author}
 TITLE / PREVIEW: {title}
 
-POST CAPTION & HASHTAGS:
+POST CAPTION & DETAILS:
 {caption}
 
 Listen to the spoken audio and extract every mentioned stock/ticker, sentiment, buy target, and thesis into the structured JSON schema.
@@ -189,6 +186,12 @@ Listen to the spoken audio and extract every mentioned stock/ticker, sentiment, 
                 ),
             )
 
+            if uploaded_file:
+                try:
+                    client.files.delete(name=uploaded_file.name)
+                except Exception:
+                    pass
+
             raw_text = response.text.strip() if response and response.text else ""
             if raw_text.startswith("```json"):
                 raw_text = raw_text[7:]
@@ -206,9 +209,9 @@ Listen to the spoken audio and extract every mentioned stock/ticker, sentiment, 
 
         except Exception as err:
             last_error = err
-            print(f"[Instagram Gemini Model: {current_model}] Failed: {str(err)[:120]}")
+            print(f"[Gemini Multimodal Model: {current_model}] Failed: {str(err)[:120]}")
             continue
 
     raise RuntimeError(
-        f"All Gemini models in cascade failed to analyze Instagram Reel. Last error: {last_error}"
+        f"All Gemini models in cascade failed to analyze media. Last error: {last_error}"
     )
