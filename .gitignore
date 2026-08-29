@@ -1,0 +1,42 @@
+# Environment & Secrets (NEVER COMMIT)
+.env
+*.env
+client_secret*.json
+youtube_token*.json
+tokens.json
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Node & Frontend
+client/node_modules/
+client/dist/
+.npm
+npm-debug.log*
+
+# Database & Generated data
+*.db
+*.sqlite
+*.sqlite3
+stocks.db
+
+# Reports & Temporary Scratch
+reports/
+scratch/
+*.log
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

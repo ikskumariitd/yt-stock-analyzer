@@ -1,0 +1,39 @@
+[
+  {
+    "name": "Meet Kevin",
+    "handle": "@MeetKevin",
+    "url": "https://www.youtube.com/@MeetKevin",
+    "enabled": true
+  },
+  {
+    "name": "Pranjal Kamra",
+    "handle": "@pranjalkamra",
+    "url": "https://www.youtube.com/@pranjalkamra",
+    "enabled": true
+  },
+  {
+    "name": "Akshat Shrivastava",
+    "handle": "@akshatshrivastava",
+    "url": "https://www.youtube.com/@akshatshrivastava",
+    "enabled": true
+  },
+  {
+    "name": "Everything Money",
+    "handle": "@EverythingMoney",
+    "url": "https://www.youtube.com/@EverythingMoney",
+    "enabled": true
+  },
+  {
+    "name": "@FinancialJuice",
+    "url": "@FinancialJuice",
+    "handle": "@FinancialJuice",
+    "enabled": true
+  },
+  {
+    "name": "Options With Ryan",
+    "channel_id": "UCQnIfbieTyf53CZBiyLAkjg",
+    "url": "http://www.youtube.com/channel/UCQnIfbieTyf53CZBiyLAkjg",
+    "handle": "Options With Ryan",
+    "enabled": true
+  }
+]

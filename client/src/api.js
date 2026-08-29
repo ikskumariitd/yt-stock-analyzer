@@ -1,0 +1,95 @@
+const API_BASE = '/api';
+
+export async function fetchRecommendations(params = {}) {
+  const query = new URLSearchParams();
+  Object.entries(params).forEach(([key, val]) => {
+    if (val !== undefined && val !== null && val !== '' && val !== 'ALL') {
+      query.append(key, val);
+    }
+  });
+  
+  const res = await fetch(`${API_BASE}/recommendations?${query.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch recommendations');
+  return res.json();
+}
+
+export async function fetchStats() {
+  const res = await fetch(`${API_BASE}/stats`);
+  if (!res.ok) throw new Error('Failed to fetch stats');
+  return res.json();
+}
+
+export async function fetchChannels() {
+  const res = await fetch(`${API_BASE}/channels`);
+  if (!res.ok) throw new Error('Failed to fetch channels');
+  return res.json();
+}
+
+export async function addChannel(urlOrHandle, name) {
+  const res = await fetch(`${API_BASE}/channels`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url_or_handle: urlOrHandle, name })
+  });
+  if (!res.ok) throw new Error('Failed to add channel');
+  return res.json();
+}
+
+export async function toggleChannel(channelId) {
+  const res = await fetch(`${API_BASE}/channels/${channelId}/toggle`, {
+    method: 'POST'
+  });
+  if (!res.ok) throw new Error('Failed to toggle channel');
+  return res.json();
+}
+
+export async function triggerScan(target, limit = 2) {
+  const res = await fetch(`${API_BASE}/scan`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target, limit })
+  });
+  if (!res.ok) throw new Error('Failed to trigger scan');
+  return res.json();
+}
+
+export async function triggerScanAll(limit = 2) {
+  const res = await fetch(`${API_BASE}/scan-all?limit=${limit}`, {
+    method: 'POST'
+  });
+  if (!res.ok) throw new Error('Failed to trigger scan all');
+  return res.json();
+}
+
+export async function fetchScanStatus() {
+  const res = await fetch(`${API_BASE}/scan/status`);
+  if (!res.ok) throw new Error('Failed to fetch scan status');
+  return res.json();
+}
+
+export async function clearScanQueue() {
+  const res = await fetch(`${API_BASE}/queue/clear`, {
+    method: 'POST'
+  });
+  if (!res.ok) throw new Error('Failed to clear queue');
+  return res.json();
+}
+
+
+export async function fetchYoutubeAuthStatus() {
+  const res = await fetch(`${API_BASE}/auth/youtube/status`);
+  if (!res.ok) throw new Error('Failed to fetch YouTube auth status');
+  return res.json();
+}
+
+export async function syncLiveYoutubeSubscriptions() {
+  const res = await fetch(`${API_BASE}/auth/youtube/sync`, {
+    method: 'POST'
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || 'Failed to sync YouTube subscriptions');
+  }
+  return res.json();
+}
+
