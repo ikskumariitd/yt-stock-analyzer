@@ -296,7 +296,7 @@ def query_recommendations(
             params.append(sentiment.upper())
 
         if channel_name and channel_name.upper() != "ALL":
-            query += " AND TRIM(channel_name) = ?"
+            query += " AND (LOWER(TRIM(REPLACE(channel_name, '@', ''))) = LOWER(TRIM(REPLACE(?, '@', ''))))"
             params.append(channel_name.strip())
 
         if market and market.upper() != "ALL":
