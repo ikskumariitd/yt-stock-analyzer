@@ -705,6 +705,11 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                     </div>
                   </th>
 
+                  {/* Actions Header (Placed right after Status) */}
+                  <th style={{ padding: '14px 18px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                    ACTION
+                  </th>
+
                   {/* AI Model Header */}
                   <th
                     onClick={() => handleHeaderClick('model_used')}
@@ -735,11 +740,6 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       STOCKS FOUND {renderSortIcon('stocks_count')}
                     </div>
-                  </th>
-
-                  {/* Actions Header */}
-                  <th style={{ padding: '14px 18px', fontWeight: '700', textAlign: 'right' }}>
-                    ACTIONS
                   </th>
                 </tr>
               </thead>
@@ -869,6 +869,46 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                       {getStatusBadge(item.status)}
                     </td>
 
+                    {/* Actions (Placed right after Status) */}
+                    <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
+                      {item.status === 'PROCESSING' || item.status === 'QUEUED' ? (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          In Progress
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleRescan(item)}
+                          disabled={rescanningId === item.video_id}
+                          title="Trigger a fresh re-scan of this video"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '5px 10px',
+                            borderRadius: '8px',
+                            border: '1px solid var(--border-subtle)',
+                            background: 'var(--bg-secondary)',
+                            color: 'var(--text-secondary)',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'var(--color-brand)';
+                            e.currentTarget.style.color = '#ffffff';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'var(--bg-secondary)';
+                            e.currentTarget.style.color = 'var(--text-secondary)';
+                          }}
+                        >
+                          <RotateCcw size={12} className={rescanningId === item.video_id ? 'spin' : ''} />
+                          {rescanningId === item.video_id ? 'Scanning...' : 'Re-Scan'}
+                        </button>
+                      )}
+                    </td>
+
                     {/* AI Model Badge */}
                     <td style={{ padding: '14px 18px', whiteSpace: 'nowrap' }}>
                       {item.status === 'PROCESSING' ? (
@@ -941,46 +981,6 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>—</span>
                         )}
                       </div>
-                    </td>
-
-                    {/* Actions */}
-                    <td style={{ padding: '14px 18px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {item.status === 'PROCESSING' || item.status === 'QUEUED' ? (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                          In Progress
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => handleRescan(item)}
-                          disabled={rescanningId === item.video_id}
-                          title="Trigger a fresh re-scan of this video"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            padding: '5px 10px',
-                            borderRadius: '8px',
-                            border: '1px solid var(--border-subtle)',
-                            background: 'var(--bg-secondary)',
-                            color: 'var(--text-secondary)',
-                            fontSize: '0.75rem',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'var(--color-brand)';
-                            e.currentTarget.style.color = '#ffffff';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'var(--bg-secondary)';
-                            e.currentTarget.style.color = 'var(--text-secondary)';
-                          }}
-                        >
-                          <RotateCcw size={12} className={rescanningId === item.video_id ? 'spin' : ''} />
-                          {rescanningId === item.video_id ? 'Scanning...' : 'Re-Scan'}
-                        </button>
-                      )}
                     </td>
                   </tr>
                 ))}
