@@ -148,12 +148,14 @@ def get_channels() -> List[Dict[str, Any]]:
             c.*,
             (SELECT COUNT(*) FROM videos v WHERE 
                 (v.channel_id IS NOT NULL AND v.channel_id != '' AND v.channel_id = c.channel_id) 
-                OR TRIM(REPLACE(v.channel_name, '@', '')) = TRIM(REPLACE(c.name, '@', ''))
-                OR TRIM(v.channel_name) = TRIM(c.handle)
+                OR LOWER(TRIM(REPLACE(v.channel_name, '@', ''))) = LOWER(TRIM(REPLACE(c.name, '@', '')))
+                OR LOWER(TRIM(REPLACE(v.channel_name, '@', ''))) = LOWER(TRIM(REPLACE(COALESCE(c.handle, ''), '@', '')))
+                OR (c.platform = 'instagram' AND LOWER(c.url) LIKE '%' || LOWER(TRIM(REPLACE(v.channel_name, '@', ''))) || '%')
             ) as analyzed_videos_count,
             (SELECT COUNT(*) FROM recommendations r WHERE 
-                TRIM(REPLACE(r.channel_name, '@', '')) = TRIM(REPLACE(c.name, '@', ''))
-                OR TRIM(r.channel_name) = TRIM(c.handle)
+                LOWER(TRIM(REPLACE(r.channel_name, '@', ''))) = LOWER(TRIM(REPLACE(c.name, '@', '')))
+                OR LOWER(TRIM(REPLACE(r.channel_name, '@', ''))) = LOWER(TRIM(REPLACE(COALESCE(c.handle, ''), '@', '')))
+                OR (c.platform = 'instagram' AND LOWER(c.url) LIKE '%' || LOWER(TRIM(REPLACE(r.channel_name, '@', ''))) || '%')
             ) as stock_picks_count
         FROM channels c
         ORDER BY c.name ASC
