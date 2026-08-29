@@ -1,12 +1,17 @@
 import os
 import json
 import time
+import concurrent.futures
 from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
 from schema import VideoStockSummary
 
 # Load environment variables
 load_dotenv()
+
+# Per-model timeouts before automatically cascading to the next model
+PER_MODEL_TEXT_TIMEOUT = 35.0   # 35s per model for text transcripts
+PER_MODEL_AUDIO_TIMEOUT = 55.0  # 55s per model for multimodal audio
 
 
 EXTRACTION_SYSTEM_PROMPT = """You are a World-Class Financial Analyst and Investment Intelligence Extractor.
@@ -46,6 +51,14 @@ CASCADE_MODELS = [
 ]
 
 
+def _call_gemini_generate(client, model, contents, config):
+    return client.models.generate_content(
+        model=model,
+        contents=contents,
+        config=config,
+    )
+
+
 def analyze_transcript_with_gemini(
     transcript_data: Dict[str, Any],
     api_key: Optional[str] = None,
@@ -53,7 +66,7 @@ def analyze_transcript_with_gemini(
 ) -> VideoStockSummary:
     """
     Sends timestamped video transcript to Gemini with structured schema output.
-    Uses an intelligent multi-model cascade with exponential backoff for free-tier resilience.
+    Uses an intelligent multi-model cascade with per-model timeout fallback.
     """
     api_key = api_key or os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -87,45 +100,52 @@ Extract all stock recommendations, buy levels, targets, stop-losses, and investm
     last_error = None
 
     for current_model in models_to_try:
-        for attempt in range(2):
-            try:
-                from google import genai
-                from google.genai import types
+        try:
+            from google import genai
+            from google.genai import types
 
-                client = genai.Client(api_key=api_key)
-                response = client.models.generate_content(
-                    model=current_model,
-                    contents=[user_prompt],
-                    config=types.GenerateContentConfig(
-                        system_instruction=EXTRACTION_SYSTEM_PROMPT,
-                        response_mime_type="application/json",
-                        response_schema=VideoStockSummary,
-                        temperature=0.1,
-                    ),
+            client = genai.Client(api_key=api_key)
+            config = types.GenerateContentConfig(
+                system_instruction=EXTRACTION_SYSTEM_PROMPT,
+                response_mime_type="application/json",
+                response_schema=VideoStockSummary,
+                temperature=0.1,
+            )
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    _call_gemini_generate,
+                    client,
+                    current_model,
+                    [user_prompt],
+                    config
                 )
-                
-                raw_text = response.text.strip() if response and response.text else ""
-                if raw_text.startswith("```json"):
-                    raw_text = raw_text[7:]
-                elif raw_text.startswith("```"):
-                    raw_text = raw_text[3:]
-                if raw_text.endswith("```"):
-                    raw_text = raw_text[:-3]
-                raw_text = raw_text.strip()
+                try:
+                    response = future.result(timeout=PER_MODEL_TEXT_TIMEOUT)
+                except concurrent.futures.TimeoutError:
+                    print(f"⏱️ [Gemini Model: {current_model}] Timed out after {PER_MODEL_TEXT_TIMEOUT}s. Cascading to next model...")
+                    last_error = TimeoutError(f"Model {current_model} timed out after {PER_MODEL_TEXT_TIMEOUT}s")
+                    continue
+            
+            raw_text = response.text.strip() if response and response.text else ""
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:]
+            elif raw_text.startswith("```"):
+                raw_text = raw_text[3:]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
+            raw_text = raw_text.strip()
 
-                parsed_json = json.loads(raw_text)
-                summary = VideoStockSummary.model_validate(parsed_json)
-                summary.model_used = current_model
-                return summary
+            parsed_json = json.loads(raw_text)
+            summary = VideoStockSummary.model_validate(parsed_json)
+            summary.model_used = current_model
+            return summary
 
-            except Exception as err:
-                last_error = err
-                err_str = str(err)
-                print(f"[Gemini Model: {current_model} (Attempt {attempt+1})] Failed: {err_str[:120]}")
-                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
-                    time.sleep(2.5 * (attempt + 1))
-                else:
-                    break  # Move to next model immediately for other errors
+        except Exception as err:
+            last_error = err
+            err_str = str(err)
+            print(f"[Gemini Model: {current_model}] Error: {err_str[:120]}. Trying next configured model...")
+            continue
 
     raise RuntimeError(
         f"All Gemini models in cascade failed to analyze video. Last error: {last_error}"
@@ -139,6 +159,7 @@ def analyze_instagram_media_with_gemini(
 ) -> VideoStockSummary:
     """
     Sends Instagram Reel audio file + caption text (or YouTube fallback audio) to Gemini Multimodal for spoken stock extraction.
+    Supports per-model timeout fallback across the user-configured cascade.
     """
     api_key = api_key or os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -195,16 +216,27 @@ Listen to the spoken audio and extract every mentioned stock/ticker, sentiment, 
 
             contents.append(prompt_text)
 
-            response = client.models.generate_content(
-                model=current_model,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    system_instruction=EXTRACTION_SYSTEM_PROMPT,
-                    response_mime_type="application/json",
-                    response_schema=VideoStockSummary,
-                    temperature=0.1,
-                ),
+            config = types.GenerateContentConfig(
+                system_instruction=EXTRACTION_SYSTEM_PROMPT,
+                response_mime_type="application/json",
+                response_schema=VideoStockSummary,
+                temperature=0.1,
             )
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    _call_gemini_generate,
+                    client,
+                    current_model,
+                    contents,
+                    config
+                )
+                try:
+                    response = future.result(timeout=PER_MODEL_AUDIO_TIMEOUT)
+                except concurrent.futures.TimeoutError:
+                    print(f"⏱️ [Gemini Multimodal: {current_model}] Timed out after {PER_MODEL_AUDIO_TIMEOUT}s. Cascading to next model...")
+                    last_error = TimeoutError(f"Model {current_model} timed out after {PER_MODEL_AUDIO_TIMEOUT}s")
+                    continue
 
             if uploaded_file:
                 try:
@@ -231,7 +263,7 @@ Listen to the spoken audio and extract every mentioned stock/ticker, sentiment, 
 
         except Exception as err:
             last_error = err
-            print(f"[Gemini Multimodal Model: {current_model}] Failed: {str(err)[:120]}")
+            print(f"[Gemini Multimodal Model: {current_model}] Failed: {str(err)[:120]}. Trying next configured model...")
             continue
 
     raise RuntimeError(
