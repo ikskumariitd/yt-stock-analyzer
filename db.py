@@ -723,5 +723,34 @@ def set_setting(key: str, value: Any):
         conn.commit()
 
 
+DEFAULT_CASCADE_MODELS = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.6-flash",
+    "gemini-flash-lite-latest",
+    "gemini-3.5-flash",
+    "gemini-3.7-flash"
+]
+
+
+def get_model_cascade() -> List[str]:
+    """Returns the ordered list of Gemini models for the extraction cascade."""
+    val = get_setting("gemini_model_cascade")
+    if val:
+        try:
+            models = json.loads(val)
+            if isinstance(models, list) and len(models) > 0:
+                return models
+        except Exception:
+            pass
+    return DEFAULT_CASCADE_MODELS.copy()
+
+
+def set_model_cascade(models: List[str]):
+    """Persists the user-configured Gemini model cascade order in SQLite."""
+    if not isinstance(models, list) or len(models) == 0:
+        models = DEFAULT_CASCADE_MODELS.copy()
+    set_setting("gemini_model_cascade", json.dumps(models))
+
+
 # Initialize DB on load
 init_db()

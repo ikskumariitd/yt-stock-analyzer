@@ -381,22 +381,38 @@ def sync_live_youtube_subscriptions():
 
 
 class SettingsRequest(BaseModel):
-    cooldown_seconds: int
+    cooldown_seconds: Optional[int] = None
+    model_cascade: Optional[List[str]] = None
 
 
 @app.get("/api/scan/settings")
 def get_scan_settings():
     return {
-        "cooldown_seconds": scan_queue.get_cooldown_seconds()
+        "cooldown_seconds": scan_queue.get_cooldown_seconds(),
+        "model_cascade": db.get_model_cascade(),
+        "available_models": [
+            "gemini-3.5-flash-lite",
+            "gemini-3.6-flash",
+            "gemini-3.7-flash",
+            "gemini-3.5-flash",
+            "gemini-flash-lite-latest",
+            "gemini-2.5-flash",
+            "gemini-2.5-pro"
+        ]
     }
 
 
 @app.post("/api/scan/settings")
 def update_scan_settings(req: SettingsRequest):
-    scan_queue.set_cooldown_seconds(req.cooldown_seconds)
+    if req.cooldown_seconds is not None:
+        scan_queue.set_cooldown_seconds(req.cooldown_seconds)
+    if req.model_cascade is not None and len(req.model_cascade) > 0:
+        db.set_model_cascade(req.model_cascade)
+        scan_queue.log(f"⚙️ Model cascade priority updated to: {' -> '.join(req.model_cascade)}")
     return {
         "success": True,
-        "cooldown_seconds": scan_queue.get_cooldown_seconds()
+        "cooldown_seconds": scan_queue.get_cooldown_seconds(),
+        "model_cascade": db.get_model_cascade()
     }
 
 

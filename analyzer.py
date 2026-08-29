@@ -76,7 +76,14 @@ TRANSCRIPT WITH TIMESTAMPS:
 Extract all stock recommendations, buy levels, targets, stop-losses, and investment thesis into the structured JSON schema.
 """
 
-    models_to_try = [model_name] if model_name else CASCADE_MODELS
+    if model_name:
+        models_to_try = [model_name]
+    else:
+        try:
+            import db
+            models_to_try = db.get_model_cascade()
+        except Exception:
+            models_to_try = CASCADE_MODELS
     last_error = None
 
     for current_model in models_to_try:
@@ -153,7 +160,14 @@ POST CAPTION & DETAILS:
 Listen to the spoken audio and extract every mentioned stock/ticker, sentiment, buy target, and thesis into the structured JSON schema.
 """
 
-    models_to_try = [model_name] if model_name else CASCADE_MODELS
+    if model_name:
+        models_to_try = [model_name]
+    else:
+        try:
+            import db
+            models_to_try = db.get_model_cascade()
+        except Exception:
+            models_to_try = CASCADE_MODELS
     last_error = None
 
     for current_model in models_to_try:

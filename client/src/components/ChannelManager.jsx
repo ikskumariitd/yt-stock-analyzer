@@ -1,5 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Tv, Plus, Play, Check, ExternalLink, RefreshCw, Radio, Link2, Sparkles, Trash2, Calendar, X, Clock } from 'lucide-react';
+import {
+  Tv,
+  Plus,
+  Play,
+  Check,
+  ExternalLink,
+  RefreshCw,
+  Radio,
+  Link2,
+  Sparkles,
+  Trash2,
+  Calendar,
+  X,
+  Clock,
+  ArrowUp,
+  ArrowDown,
+  Bot,
+  SlidersHorizontal,
+  Zap,
+  Brain
+} from 'lucide-react';
 import {
   addChannel,
   toggleChannel,
@@ -17,6 +37,24 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
   const [scanLimit, setScanLimit] = useState(2);
   const [scanAfterDate, setScanAfterDate] = useState('');
   const [cooldownSeconds, setCooldownSeconds] = useState(3600); // 60 mins default
+  const [modelCascade, setModelCascade] = useState([
+    'gemini-3.5-flash-lite',
+    'gemini-3.6-flash',
+    'gemini-flash-lite-latest',
+    'gemini-3.5-flash',
+    'gemini-3.7-flash'
+  ]);
+  const [availableModels, setAvailableModels] = useState([
+    'gemini-3.5-flash-lite',
+    'gemini-3.6-flash',
+    'gemini-3.7-flash',
+    'gemini-3.5-flash',
+    'gemini-flash-lite-latest',
+    'gemini-2.5-flash',
+    'gemini-2.5-pro'
+  ]);
+  const [showModelConfig, setShowModelConfig] = useState(false);
+  const [modelSaveMsg, setModelSaveMsg] = useState('');
   const [channelLimits, setChannelLimits] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authStatus, setAuthStatus] = useState(null);
@@ -34,6 +72,12 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
         if (data?.cooldown_seconds !== undefined) {
           setCooldownSeconds(data.cooldown_seconds);
         }
+        if (Array.isArray(data?.model_cascade) && data.model_cascade.length > 0) {
+          setModelCascade(data.model_cascade);
+        }
+        if (Array.isArray(data?.available_models)) {
+          setAvailableModels(data.available_models);
+        }
       })
       .catch(() => {});
   }, []);
@@ -50,6 +94,66 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
     } catch (e) {
       console.error("Failed to update cooldown setting", e);
     }
+  };
+
+  const saveModelCascade = async (newCascade) => {
+    setModelCascade(newCascade);
+    try {
+      await fetch('/api/scan/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model_cascade: newCascade })
+      });
+      setModelSaveMsg('✓ Saved & Persisted in DB');
+      setTimeout(() => setModelSaveMsg(''), 2500);
+    } catch (e) {
+      console.error("Failed to save model cascade", e);
+    }
+  };
+
+  const moveModelUp = (index) => {
+    if (index === 0) return;
+    const updated = [...modelCascade];
+    const temp = updated[index - 1];
+    updated[index - 1] = updated[index];
+    updated[index] = temp;
+    saveModelCascade(updated);
+  };
+
+  const moveModelDown = (index) => {
+    if (index === modelCascade.length - 1) return;
+    const updated = [...modelCascade];
+    const temp = updated[index + 1];
+    updated[index + 1] = updated[index];
+    updated[index] = temp;
+    saveModelCascade(updated);
+  };
+
+  const removeModel = (modelToRemove) => {
+    if (modelCascade.length <= 1) {
+      alert("At least one model must remain in the cascade.");
+      return;
+    }
+    const updated = modelCascade.filter(m => m !== modelToRemove);
+    saveModelCascade(updated);
+  };
+
+  const addModel = (modelToAdd) => {
+    if (modelCascade.includes(modelToAdd)) return;
+    const updated = [...modelCascade, modelToAdd];
+    saveModelCascade(updated);
+  };
+
+  const applyPreset = (preset) => {
+    let presetList = [];
+    if (preset === 'speed') {
+      presetList = ['gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-flash-lite-latest'];
+    } else if (preset === 'accuracy') {
+      presetList = ['gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest'];
+    } else if (preset === 'balanced') {
+      presetList = ['gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.7-flash', 'gemini-flash-lite-latest'];
+    }
+    saveModelCascade(presetList);
   };
 
   const handleLiveSync = async () => {
@@ -430,6 +534,31 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               </select>
             </div>
 
+            {/* AI Model Cascade Priority Button */}
+            <button
+              type="button"
+              onClick={() => setShowModelConfig(!showModelConfig)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: showModelConfig ? 'rgba(99, 102, 241, 0.15)' : 'var(--bg-input)',
+                border: showModelConfig ? '1px solid var(--color-brand)' : '1px solid var(--border-subtle)',
+                color: showModelConfig ? 'var(--color-brand)' : 'var(--text-primary)',
+                padding: '7px 12px',
+                borderRadius: '6px',
+                fontSize: '0.8rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              title="Configure Gemini Model Priority & Cascade Order"
+            >
+              <Bot size={14} color="var(--color-brand)" />
+              AI Models ({modelCascade.length})
+              <SlidersHorizontal size={12} />
+            </button>
+
             <button
               onClick={() => onTriggerScanAll(scanLimit, scanAfterDate)}
               disabled={isScanning}
@@ -454,6 +583,238 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
             </button>
           </div>
         </div>
+
+        {/* Model Cascade Configuration Drawer */}
+        {showModelConfig && (
+          <div style={{
+            marginTop: '20px',
+            padding: '18px 20px',
+            background: 'var(--bg-card-subtle)',
+            borderRadius: '12px',
+            border: '1px solid rgba(99, 102, 241, 0.25)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.06)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Brain size={16} color="var(--color-brand)" />
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+                    Gemini AI Model Priority & Fallback Cascade
+                  </h4>
+                  {modelSaveMsg && (
+                    <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                      {modelSaveMsg}
+                    </span>
+                  )}
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  Scans try models from Top to Bottom (Priority 1 $\rightarrow$ 2 $\rightarrow$ 3). Reorder using ▲ / ▼ arrows or pick a preset. Persisted in SQLite.
+                </p>
+              </div>
+
+              {/* Quick Presets */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '600' }}>Presets:</span>
+                <button
+                  type="button"
+                  onClick={() => applyPreset('speed')}
+                  style={{
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Zap size={11} color="#f59e0b" /> Speed First (3.5 Lite)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset('accuracy')}
+                  style={{
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Brain size={11} color="#6366f1" /> State-of-the-Art (3.7 Flash)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset('balanced')}
+                  style={{
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                    padding: '4px 8px',
+                    borderRadius: '6px',
+                    fontSize: '0.72rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <Sparkles size={11} color="#10b981" /> Balanced (3.6 Flash)
+                </button>
+              </div>
+            </div>
+
+            {/* Model Ordering List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {modelCascade.map((mName, idx) => (
+                <div
+                  key={mName}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 14px',
+                    background: 'var(--bg-card)',
+                    border: idx === 0 ? '1px solid var(--color-brand)' : '1px solid var(--border-subtle)',
+                    borderRadius: '8px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: idx === 0 ? 'var(--color-brand)' : 'var(--bg-input)',
+                      color: idx === 0 ? '#ffffff' : 'var(--text-secondary)',
+                      fontSize: '0.75rem',
+                      fontWeight: '800',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      {idx + 1}
+                    </span>
+                    <div>
+                      <span style={{ fontWeight: '800', fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                        {mName}
+                      </span>
+                      {idx === 0 && (
+                        <span style={{
+                          marginLeft: '8px',
+                          fontSize: '0.68rem',
+                          fontWeight: '700',
+                          padding: '1px 6px',
+                          borderRadius: '4px',
+                          background: 'rgba(99, 102, 241, 0.12)',
+                          color: 'var(--color-brand)'
+                        }}>
+                          ⚡ Primary Choice
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => moveModelUp(idx)}
+                      disabled={idx === 0}
+                      title="Move model priority up"
+                      style={{
+                        padding: '4px 6px',
+                        background: 'var(--bg-input)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '4px',
+                        color: idx === 0 ? 'var(--text-muted)' : 'var(--text-primary)',
+                        cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <ArrowUp size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveModelDown(idx)}
+                      disabled={idx === modelCascade.length - 1}
+                      title="Move model priority down"
+                      style={{
+                        padding: '4px 6px',
+                        background: 'var(--bg-input)',
+                        border: '1px solid var(--border-subtle)',
+                        borderRadius: '4px',
+                        color: idx === modelCascade.length - 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                        cursor: idx === modelCascade.length - 1 ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <ArrowDown size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removeModel(mName)}
+                      title="Remove from cascade"
+                      style={{
+                        padding: '4px 6px',
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        borderRadius: '4px',
+                        color: '#ef4444',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Add Available Models */}
+            {availableModels.some(m => !modelCascade.includes(m)) && (
+              <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '600' }}>Add Model:</span>
+                {availableModels.filter(m => !modelCascade.includes(m)).map(m => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => addModel(m)}
+                    style={{
+                      background: 'var(--bg-input)',
+                      border: '1px dashed var(--border-subtle)',
+                      color: 'var(--text-secondary)',
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.72rem',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Plus size={11} /> {m}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Add Channel Form */}
