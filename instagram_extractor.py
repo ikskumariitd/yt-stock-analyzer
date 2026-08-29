@@ -19,25 +19,27 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def is_instagram_url(target: str) -> bool:
-    """Checks if target is an Instagram Reel, Post, or Profile URL."""
+    """Checks if target is an Instagram Reel or Profile URL."""
     target_lower = target.strip().lower()
     return "instagram.com" in target_lower or "instagr.am" in target_lower
 
 
 def normalize_instagram_url(target: str) -> str:
-    """Cleans and standardizes an Instagram Reel or Post URL."""
+    """Standardizes Instagram URL to /reel/ format."""
     target = target.strip()
     if not target.startswith("http"):
         if target.startswith("@"):
             return f"https://www.instagram.com/{target[1:]}/"
         return f"https://www.instagram.com/{target}/"
     
-    clean_url = target.split("?")[0].rstrip("/") + "/"
-    return clean_url
+    clean_url = target.split("?")[0].rstrip("/")
+    if "/p/" in clean_url:
+        clean_url = clean_url.replace("/p/", "/reel/")
+    return clean_url + "/"
 
 
 def extract_username_from_target(handle_or_url: str) -> str:
-    """Extracts raw username without @ or URL slashes."""
+    """Extracts clean username without @ or URL slashes."""
     target = handle_or_url.strip().rstrip("/")
     if "instagram.com/" in target:
         parts = target.split("instagram.com/")[-1].split("/")
@@ -45,79 +47,85 @@ def extract_username_from_target(handle_or_url: str) -> str:
     return target.lstrip("@").split("/")[0]
 
 
-def get_creator_recent_reels(handle_or_url: str, limit: int = 3) -> List[Dict[str, Any]]:
+def get_creator_recent_reels(handle_or_url: str, limit: int = 5) -> List[Dict[str, Any]]:
     """
-    Fetches the latest public reels/posts from an Instagram creator handle.
-    Uses RapidAPI if RAPIDAPI_KEY is configured in .env, with yt-dlp fallback.
+    Exclusively fetches public REELS from an Instagram creator handle.
+    Queries RapidAPI get_ig_user_reels.php first, with fallback to get_ig_user_posts.php.
     """
     username = extract_username_from_target(handle_or_url)
     rapidapi_key = os.getenv("RAPIDAPI_KEY")
     rapidapi_host = os.getenv("RAPIDAPI_HOST", "instagram-scraper-stable-api.p.rapidapi.com")
 
-    # 1. Try RapidAPI Scraper (Most Reliable & Bypasses Login Gates)
+    # 1. RapidAPI Dedicated Reels Scraper
     if rapidapi_key:
-        try:
-            logger.info(f"Querying RapidAPI for Instagram creator @{username}...")
-            url = f"https://{rapidapi_host}/get_ig_user_posts.php"
-            headers = {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "x-rapidapi-host": rapidapi_host,
-                "x-rapidapi-key": rapidapi_key
-            }
-            data = {
-                "username_or_url": username,
-                "amount": str(max(limit, 5))
-            }
-            
-            resp = requests.post(url, headers=headers, data=data, timeout=25)
-            if resp.status_code == 200:
-                res_data = resp.json()
-                posts = res_data.get("posts", [])
+        headers = {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "x-rapidapi-host": rapidapi_host,
+            "x-rapidapi-key": rapidapi_key
+        }
+        
+        # Try get_ig_user_reels.php first (Reels-only feed)
+        endpoints = ["get_ig_user_reels.php", "get_ig_user_posts.php"]
+        for ep in endpoints:
+            try:
+                logger.info(f"Querying RapidAPI endpoint {ep} for @{username} reels...")
+                url = f"https://{rapidapi_host}/{ep}"
+                data = {
+                    "username_or_url": username,
+                    "amount": str(max(limit, 5)),
+                    "pagination_token": ""
+                }
                 
-                results = []
-                for p in posts[:limit]:
-                    node = p.get("node", {})
-                    code = node.get("code")
-                    if not code:
-                        continue
+                resp = requests.post(url, headers=headers, data=data, timeout=25)
+                if resp.status_code == 200:
+                    res_data = resp.json()
+                    raw_items = res_data.get("reels") or res_data.get("posts") or res_data.get("items") or []
                     
-                    caption = ""
-                    if isinstance(node.get("caption"), dict):
-                        caption = node.get("caption", {}).get("text", "")
-                    elif isinstance(node.get("caption"), str):
-                        caption = node.get("caption", "")
+                    results = []
+                    for item in raw_items[:limit]:
+                        node = item.get("node") if isinstance(item, dict) and "node" in item else item
+                        code = node.get("code") or node.get("shortcode")
+                        if not code:
+                            continue
+                        
+                        caption = ""
+                        if isinstance(node.get("caption"), dict):
+                            caption = node.get("caption", {}).get("text", "")
+                        elif isinstance(node.get("caption"), str):
+                            caption = node.get("caption", "")
 
-                    taken_at = node.get("taken_at")
-                    date_str = ""
-                    if taken_at:
-                        try:
-                            date_str = datetime.fromtimestamp(taken_at).strftime('%Y-%m-%d')
-                        except Exception:
-                            pass
+                        taken_at = node.get("taken_at")
+                        date_str = ""
+                        if taken_at:
+                            try:
+                                date_str = datetime.fromtimestamp(taken_at).strftime('%Y-%m-%d')
+                            except Exception:
+                                pass
 
-                    title_preview = caption[:80].replace("\n", " ").strip() if caption else f"Reel {code}"
+                        title_preview = caption[:80].replace("\n", " ").strip() if caption else f"Instagram Reel {code}"
 
-                    results.append({
-                        "video_id": f"ig_{code}",
-                        "post_id": code,
-                        "url": f"https://www.instagram.com/reel/{code}/",
-                        "title": title_preview,
-                        "author": f"@{username}",
-                        "caption": caption,
-                        "published_at": date_str,
-                        "platform": "instagram"
-                    })
-                
-                if results:
-                    logger.info(f"RapidAPI successfully returned {len(results)} posts for @{username}.")
-                    return results
-            else:
-                logger.warning(f"RapidAPI responded with status {resp.status_code}: {resp.text[:120]}")
-        except Exception as api_err:
-            logger.error(f"RapidAPI Instagram query error for @{username}: {api_err}")
+                        results.append({
+                            "video_id": f"ig_{code}",
+                            "post_id": code,
+                            "url": f"https://www.instagram.com/reel/{code}/",
+                            "title": title_preview,
+                            "author": f"@{username}",
+                            "caption": caption,
+                            "published_at": date_str,
+                            "platform": "instagram"
+                        })
+                    
+                    if results:
+                        logger.info(f"RapidAPI ({ep}) successfully returned {len(results)} reels for @{username}.")
+                        return results
+                elif resp.status_code == 429:
+                    logger.warning(f"RapidAPI quota limit reached (429) for @{username}.")
+                    break
+            except Exception as api_err:
+                logger.error(f"RapidAPI error on {ep} for @{username}: {api_err}")
 
-    # 2. Fallback: yt-dlp local extractor
-    clean_url = normalize_instagram_url(handle_or_url)
+    # 2. Fallback: yt-dlp local extractor for creator profile reels
+    clean_url = f"https://www.instagram.com/{username}/reels/"
     ydl_opts = {
         'extract_flat': True,
         'quiet': True,
@@ -135,25 +143,24 @@ def get_creator_recent_reels(handle_or_url: str, limit: int = 3) -> List[Dict[st
                     results.append({
                         "video_id": f"ig_{entry_id}",
                         "post_id": entry_id,
-                        "url": entry.get("url") or f"https://www.instagram.com/reel/{entry_id}/",
-                        "title": entry.get("title") or f"Reel {entry_id}",
+                        "url": f"https://www.instagram.com/reel/{entry_id}/",
+                        "title": entry.get("title") or f"Instagram Reel {entry_id}",
                         "author": f"@{username}",
                         "platform": "instagram"
                     })
     except Exception as e:
-        logger.error(f"Error fetching creator reels for '{handle_or_url}': {e}")
+        logger.error(f"Error fetching creator reels with yt-dlp for '{clean_url}': {e}")
 
     return results
 
 
 def extract_instagram_post_metadata_and_audio(url: str, preloaded_caption: str = "") -> Dict[str, Any]:
     """
-    Extracts metadata and audio/caption for an Instagram Reel.
+    Extracts audio track and metadata exclusively for an Instagram Reel.
     """
     clean_url = normalize_instagram_url(url)
-    post_id = clean_url.split("/")[-2] if "/reel/" in clean_url or "/p/" in clean_url else "reel"
+    post_id = clean_url.rstrip("/").split("/")[-1]
     
-    # Try yt-dlp to download media audio track
     ydl_opts = {
         'format': 'bestaudio/best',
         'outtmpl': str(CACHE_DIR / '%(id)s.%(ext)s'),
