@@ -134,6 +134,7 @@ class SequentialScanQueue:
                         title=item.title,
                         video_url=v_url,
                         platform=item.platform,
+                        published_at=item.published_at,
                         status="SKIPPED",
                         error_message="Already processed in database (deduplicated)"
                     )
@@ -193,6 +194,7 @@ class SequentialScanQueue:
                                 title=item.title,
                                 video_url=f"https://www.youtube.com/watch?v={item.video_id}",
                                 platform="youtube",
+                                published_at=item.published_at or t_data.get("published_at", ""),
                                 status="FAILED",
                                 error_message=item.error,
                                 duration_seconds=time.time() - item_start_time
@@ -207,13 +209,14 @@ class SequentialScanQueue:
                         if not summary:
                             raise RuntimeError("Gemini extraction returned empty result")
 
+                        pub_date = item.published_at or t_data.get("published_at", "")
                         await asyncio.to_thread(
                             db.save_video_analysis,
                             video_id=item.video_id,
                             channel_id=item.channel_id,
                             channel_name=ch_name,
                             title=item.title,
-                            published_at=item.published_at or t_data.get("published_at", ""),
+                            published_at=pub_date,
                             video_url=f"https://www.youtube.com/watch?v={item.video_id}",
                             market_outlook=summary.market_outlook,
                             summary_text=summary.creator_summary,
@@ -233,6 +236,7 @@ class SequentialScanQueue:
                         title=item.title,
                         video_url=v_url,
                         platform=item.platform,
+                        published_at=item.published_at or (ig_data.get("published_at") if item.platform == "instagram" else t_data.get("published_at")),
                         status="SUCCESS",
                         stocks_count=len(summary.recommendations),
                         tickers=tickers,
@@ -254,6 +258,7 @@ class SequentialScanQueue:
                         title=item.title,
                         video_url=v_url,
                         platform=item.platform,
+                        published_at=item.published_at,
                         status="FAILED",
                         error_message=str(e),
                         duration_seconds=time.time() - item_start_time

@@ -105,6 +105,7 @@ def init_db():
             title TEXT,
             video_url TEXT,
             platform TEXT DEFAULT 'youtube',
+            published_at TEXT,
             status TEXT DEFAULT 'SUCCESS', -- 'SUCCESS', 'FAILED', 'SKIPPED'
             stocks_count INTEGER DEFAULT 0,
             tickers_json TEXT, -- JSON array of tickers
@@ -113,6 +114,11 @@ def init_db():
             scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
+
+        try:
+            cursor.execute("ALTER TABLE scan_audit_log ADD COLUMN published_at TEXT;")
+        except sqlite3.OperationalError:
+            pass
 
         # Performance Indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_ticker ON recommendations(ticker);")
@@ -522,6 +528,7 @@ def log_scan_audit(
     title: str = "",
     video_url: str = "",
     platform: str = "youtube",
+    published_at: Optional[str] = None,
     status: str = "SUCCESS",
     stocks_count: int = 0,
     tickers: Optional[List[str]] = None,
@@ -532,15 +539,16 @@ def log_scan_audit(
         cursor = conn.cursor()
         cursor.execute("""
         INSERT INTO scan_audit_log (
-            video_id, channel_name, title, video_url, platform,
+            video_id, channel_name, title, video_url, platform, published_at,
             status, stocks_count, tickers_json, error_message, duration_seconds, scanned_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         """, (
             video_id,
             channel_name,
             title,
             video_url,
             platform,
+            published_at,
             status,
             stocks_count,
             json.dumps(tickers or []),
@@ -564,9 +572,9 @@ def get_scan_audit_logs(
         cursor.execute("SELECT COUNT(*) FROM scan_audit_log")
         if cursor.fetchone()[0] == 0:
             cursor.execute("""
-            SELECT v.video_id, v.channel_name, v.title, v.video_url, v.platform, v.processed_at
+            SELECT v.video_id, v.channel_name, v.title, v.video_url, v.platform, v.published_at, v.processed_at
             FROM videos v
-            ORDER BY v.processed_at DESC
+            ORDER BY v.processed_at ASC
             """)
             videos = cursor.fetchall()
             for v in videos:
@@ -576,15 +584,16 @@ def get_scan_audit_logs(
                 tickers = list(dict.fromkeys([r[0] for r in cursor.fetchall()]))
                 cursor.execute("""
                 INSERT INTO scan_audit_log (
-                    video_id, channel_name, title, video_url, platform,
+                    video_id, channel_name, title, video_url, platform, published_at,
                     status, stocks_count, tickers_json, error_message, scanned_at
-                ) VALUES (?, ?, ?, ?, ?, 'SUCCESS', ?, ?, NULL, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, 'SUCCESS', ?, ?, NULL, ?)
                 """, (
                     vid,
                     v_dict["channel_name"],
                     v_dict["title"],
                     v_dict["video_url"],
                     v_dict["platform"] or "youtube",
+                    v_dict["published_at"],
                     len(tickers),
                     json.dumps(tickers),
                     v_dict["processed_at"] or datetime.now().isoformat()

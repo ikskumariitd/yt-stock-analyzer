@@ -554,6 +554,7 @@ async def get_scan_audit(
             "title": item.get("title") or f"Video {item['video_id']}",
             "video_url": item.get("raw_url") or (f"https://www.instagram.com/reel/{item['video_id'].replace('ig_', '')}/" if item.get("platform") == "instagram" else f"https://www.youtube.com/watch?v={item['video_id']}"),
             "platform": item.get("platform") or "youtube",
+            "published_at": item.get("published_at") or "",
             "status": item["status"],  # 'PROCESSING' or 'QUEUED'
             "stocks_count": 0,
             "tickers": [],

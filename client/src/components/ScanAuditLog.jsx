@@ -20,7 +20,7 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { fetchScanAudit, rescanVideo } from '../api';
-import { formatSingaporeAuditTime, parseUtcDate } from '../utils/timeUtils';
+import { formatSingaporeAuditTime, formatSingaporeDate, parseUtcDate } from '../utils/timeUtils';
 
 export default function ScanAuditLog({ onRescanTriggered }) {
   const [auditData, setAuditData] = useState({
@@ -123,6 +123,12 @@ export default function ScanAuditLog({ onRescanTriggered }) {
       if (sortField === 'scanned_at') {
         const timeA = a.scanned_at ? (parseUtcDate(a.scanned_at)?.getTime() || 0) : (a.status === 'PROCESSING' ? 9999999999999 : 0);
         const timeB = b.scanned_at ? (parseUtcDate(b.scanned_at)?.getTime() || 0) : (b.status === 'PROCESSING' ? 9999999999999 : 0);
+        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+      }
+
+      if (sortField === 'published_at') {
+        const timeA = a.published_at ? (parseUtcDate(a.published_at)?.getTime() || 0) : 0;
+        const timeB = b.published_at ? (parseUtcDate(b.published_at)?.getTime() || 0) : 0;
         return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
       }
 
@@ -618,6 +624,22 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                     </div>
                   </th>
 
+                  {/* Video Upload Date Header */}
+                  <th
+                    onClick={() => handleHeaderClick('published_at')}
+                    style={{
+                      padding: '14px 18px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      color: sortField === 'published_at' ? 'var(--color-brand)' : 'var(--text-muted)'
+                    }}
+                    title="Click to sort by Video Upload / Published Date"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      UPLOAD DATE {renderSortIcon('published_at')}
+                    </div>
+                  </th>
+
                   {/* Platform Header */}
                   <th
                     onClick={() => handleHeaderClick('platform')}
@@ -720,7 +742,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                       if (item.status !== 'PROCESSING') e.currentTarget.style.background = 'transparent';
                     }}
                   >
-                    {/* Timestamp */}
+                    {/* Scan Timestamp */}
                     <td style={{ padding: '14px 18px', whiteSpace: 'nowrap', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                       {item.status === 'PROCESSING' ? (
                         <span style={{ color: 'var(--color-brand)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -731,6 +753,17 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                       ) : item.scanned_at ? (
                         formatSingaporeAuditTime(item.scanned_at)
                       ) : 'Recent'}
+                    </td>
+
+                    {/* Video Upload / Published Date */}
+                    <td style={{ padding: '14px 18px', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                      {item.published_at ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          📅 {formatSingaporeDate(item.published_at)}
+                        </span>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                      )}
                     </td>
 
                     {/* Platform Badge */}
