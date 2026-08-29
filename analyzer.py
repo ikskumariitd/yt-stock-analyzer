@@ -1,6 +1,7 @@
 import os
 import json
-from typing import Optional, Dict, Any
+import time
+from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
 from schema import VideoStockSummary
 
@@ -30,18 +31,18 @@ CRITICAL EXTRACTION GUIDELINES:
    - `SELL` / `AVOID`: Bearish, trimming position, or warning viewers to stay away.
 
 4. MARKET DIVERSITY:
-   - Handle US stocks (NVDA, TSLA, AAPL, AMZN, MSFT, etc.)
-   - Handle Indian NSE/BSE stocks (RELIANCE, HDFCBANK, TATASTEEL, INFY, ITC, etc.)
-   - Handle Crypto, Commodities, Indices (SPY, QQQ, NIFTY, BANKNIFTY, BTC, ETH)
+   - Handle US stocks (NVDA, TSLA, AAPL, AMZN, MSFT, PLTR, etc.)
+   - Handle Indian NSE/BSE stocks (RELIANCE, HDFCBANK, TATASTEEL, INFY, etc.)
+   - Handle Crypto, Commodities, Indices (SPY, QQQ, NIFTY, BTC, ETH)
 """
 
-
-DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
-
-
-def get_default_model() -> str:
-    """Returns the configured model from environment, defaulting to latest Gemini 3 model (gemini-3.6-flash)."""
-    return DEFAULT_MODEL
+# Cascade of fast, intelligent models for high free-tier resilience
+CASCADE_MODELS = [
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-3.6-flash",
+    "gemini-3.7-flash"
+]
 
 
 def analyze_transcript_with_gemini(
@@ -50,10 +51,9 @@ def analyze_transcript_with_gemini(
     model_name: Optional[str] = None
 ) -> VideoStockSummary:
     """
-    Calls Gemini with structured schema output to extract stock recommendations from transcript.
-    Defaults to latest flagship gemini-2.5-pro (or gemini-2.5-flash).
+    Sends timestamped video transcript to Gemini with structured schema output.
+    Uses an intelligent multi-model cascade with exponential backoff for free-tier resilience.
     """
-    model_name = model_name or get_default_model()
     api_key = api_key or os.getenv("GEMINI_API_KEY")
     if not api_key:
         raise ValueError(
@@ -64,8 +64,7 @@ def analyze_transcript_with_gemini(
     author = transcript_data.get("author", "Creator")
     timestamped_text = transcript_data.get("timestamped_text", "")
     
-    user_prompt = f"""
-Analyze the following YouTube video transcript:
+    user_prompt = f"""Analyze the following YouTube video transcript and extract all stock recommendations:
 
 VIDEO TITLE: {title}
 CHANNEL / CREATOR: {author}
@@ -73,60 +72,31 @@ CHANNEL / CREATOR: {author}
 TRANSCRIPT WITH TIMESTAMPS:
 {timestamped_text}
 
-Extract all stock recommendations, buy levels, targets, stop-losses, and investment thesis into the structured schema.
+Extract all stock recommendations, buy levels, targets, stop-losses, and investment thesis into the structured JSON schema.
 """
 
-    # Try modern google-genai SDK first with retry backoff
-    for attempt in range(3):
-        try:
-            from google import genai
-            from google.genai import types
+    models_to_try = [model_name] if model_name else CASCADE_MODELS
+    last_error = None
 
-            client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(
-                model=model_name,
-                contents=[user_prompt],
-                config=types.GenerateContentConfig(
-                    system_instruction=EXTRACTION_SYSTEM_PROMPT,
-                    response_mime_type="application/json",
-                    response_schema=VideoStockSummary,
-                    temperature=0.1,
-                ),
-            )
-            raw_text = response.text.strip()
-            if raw_text.startswith("```json"):
-                raw_text = raw_text[7:]
-            elif raw_text.startswith("```"):
-                raw_text = raw_text[3:]
-            if raw_text.endswith("```"):
-                raw_text = raw_text[:-3]
-            raw_text = raw_text.strip()
-
-            parsed_json = json.loads(raw_text)
-            return VideoStockSummary.model_validate(parsed_json)
-
-        except Exception as modern_err:
-            if "429" in str(modern_err) or "503" in str(modern_err):
-                import time
-                time.sleep(2 ** attempt)
-                continue
-
-            # Fallback to google.generativeai SDK
+    for current_model in models_to_try:
+        for attempt in range(2):
             try:
-                import google.generativeai as legacy_genai
+                from google import genai
+                from google.genai import types
 
-                legacy_genai.configure(api_key=api_key)
-                model = legacy_genai.GenerativeModel(
-                    model_name="gemini-1.5-flash",
-                    system_instruction=EXTRACTION_SYSTEM_PROMPT,
-                    generation_config={
-                        "response_mime_type": "application/json",
-                        "response_schema": VideoStockSummary,
-                        "temperature": 0.1,
-                    }
+                client = genai.Client(api_key=api_key)
+                response = client.models.generate_content(
+                    model=current_model,
+                    contents=[user_prompt],
+                    config=types.GenerateContentConfig(
+                        system_instruction=EXTRACTION_SYSTEM_PROMPT,
+                        response_mime_type="application/json",
+                        response_schema=VideoStockSummary,
+                        temperature=0.1,
+                    ),
                 )
-                response = model.generate_content(user_prompt)
-                raw_text = response.text.strip()
+                
+                raw_text = response.text.strip() if response and response.text else ""
                 if raw_text.startswith("```json"):
                     raw_text = raw_text[7:]
                 elif raw_text.startswith("```"):
@@ -135,11 +105,25 @@ Extract all stock recommendations, buy levels, targets, stop-losses, and investm
                     raw_text = raw_text[:-3]
                 raw_text = raw_text.strip()
 
+                if not raw_text:
+                    raise ValueError("Gemini returned empty response text")
+
                 parsed_json = json.loads(raw_text)
                 return VideoStockSummary.model_validate(parsed_json)
-            except Exception as legacy_err:
-                if attempt == 2:
-                    raise RuntimeError(
-                        f"Gemini API extraction failed: {modern_err} (fallback: {legacy_err})"
-                    )
 
+            except Exception as err:
+                last_error = err
+                err_str = str(err)
+                print(f"[Gemini Model: {current_model}] Attempt {attempt + 1} failed: {err_str[:120]}")
+
+                # If rate limited (429), try quick wait or next cascade model
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str or "503" in err_str:
+                    time.sleep(2)
+                    continue
+                else:
+                    # Break to next model in cascade
+                    break
+
+    raise RuntimeError(
+        f"All Gemini models in cascade failed to analyze transcript. Last error: {last_error}"
+    )

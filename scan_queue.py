@@ -125,6 +125,8 @@ class SequentialScanQueue:
                         # 3. Gemini Extraction
                         self.log(f"🧠 Extracting stock calls with Gemini for '{item.title}'...")
                         summary = await asyncio.to_thread(analyze_transcript_with_gemini, t_data)
+                        if not summary:
+                            raise RuntimeError("Gemini extraction returned empty result")
 
                         # 4. Save to SQLite
                         await asyncio.to_thread(
