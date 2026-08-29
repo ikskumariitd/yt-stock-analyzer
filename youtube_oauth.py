@@ -109,14 +109,17 @@ def load_saved_credentials() -> Optional[Credentials]:
         creds = Credentials(
             token=data.get("token"),
             refresh_token=data.get("refresh_token"),
-            token_uri=data.get("token_uri"),
+            token_uri=data.get("token_uri") or "https://oauth2.googleapis.com/token",
             client_id=data.get("client_id"),
             client_secret=data.get("client_secret"),
             scopes=data.get("scopes")
         )
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-            save_token(creds)
+        if creds and creds.refresh_token:
+            try:
+                creds.refresh(Request())
+                save_token(creds)
+            except Exception as re:
+                print(f"Token refresh warning: {re}")
         return creds
     except Exception as e:
         print(f"Error loading saved token: {e}")
@@ -128,12 +131,14 @@ def fetch_live_youtube_subscriptions(credentials: Credentials) -> List[Dict[str,
     Calls YouTube Data API live endpoint to fetch all channels the user is subscribed to in real time.
     Endpoint: https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true
     """
-    if credentials.expired and credentials.refresh_token:
-        credentials.refresh(Request())
-        save_token(credentials)
+    if credentials.refresh_token:
+        try:
+            credentials.refresh(Request())
+            save_token(credentials)
+        except Exception as e:
+            print(f"Pre-fetch token refresh attempt: {e}")
 
     url = "https://www.googleapis.com/youtube/v3/subscriptions"
-    headers = {"Authorization": f"Bearer {credentials.token}"}
     params = {
         "part": "snippet",
         "mine": "true",
@@ -147,7 +152,23 @@ def fetch_live_youtube_subscriptions(credentials: Credentials) -> List[Dict[str,
         if next_page_token:
             params["pageToken"] = next_page_token
 
+        headers = {"Authorization": f"Bearer {credentials.token}"}
         resp = requests.get(url, headers=headers, params=params)
+        
+        # If token expired mid-request, refresh and retry once
+        if resp.status_code == 401 and credentials.refresh_token:
+            print("Access token expired (401). Refreshing token and retrying...")
+            try:
+                credentials.refresh(Request())
+                save_token(credentials)
+                headers = {"Authorization": f"Bearer {credentials.token}"}
+                resp = requests.get(url, headers=headers, params=params)
+            except Exception as ref_err:
+                print(f"Failed to refresh token after 401: {ref_err}")
+                if TOKEN_FILE.exists():
+                    TOKEN_FILE.unlink(missing_ok=True)
+                raise PermissionError("YouTube login expired. Please reconnect your YouTube account.")
+
         if resp.status_code != 200:
             raise RuntimeError(f"YouTube API Error ({resp.status_code}): {resp.text}")
 

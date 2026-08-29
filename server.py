@@ -273,29 +273,36 @@ def remove_channel(channel_id: int):
 
 
 
+def get_request_base_url(request: Request) -> str:
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme or "http"
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    return f"{proto}://{host}".rstrip("/")
+
+
 @app.get("/api/auth/youtube/status")
 def get_youtube_auth_status():
     creds = youtube_oauth.load_saved_credentials()
     return {
-        "connected": creds is not None and creds.valid,
+        "connected": creds is not None and (creds.valid or bool(creds.refresh_token)),
         "has_credentials_config": Path("client_secret.json").exists() or bool(os.getenv("GOOGLE_CLIENT_ID"))
     }
 
 
 @app.get("/api/auth/youtube/login")
 def login_youtube_oauth(request: Request):
-    base_url = str(request.base_url).rstrip("/")
+    base_url = get_request_base_url(request)
     redirect_uri = f"{base_url}/api/auth/youtube/callback"
     try:
         auth_url = youtube_oauth.get_authorization_url(redirect_uri)
         return RedirectResponse(auth_url)
     except Exception as e:
+        print(f"YouTube Login Error: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/auth/youtube/callback")
 def callback_youtube_oauth(code: str, request: Request):
-    base_url = str(request.base_url).rstrip("/")
+    base_url = get_request_base_url(request)
     redirect_uri = f"{base_url}/api/auth/youtube/callback"
     try:
         credentials = youtube_oauth.exchange_code_for_credentials(code=code, redirect_uri=redirect_uri)
@@ -316,14 +323,13 @@ def callback_youtube_oauth(code: str, request: Request):
         return RedirectResponse(f"{base_url}/?auth=error&error={str(e)}")
 
 
-
 @app.post("/api/auth/youtube/sync")
 def sync_live_youtube_subscriptions():
     credentials = youtube_oauth.load_saved_credentials()
     if not credentials:
         raise HTTPException(
             status_code=401,
-            detail="YouTube account not connected. Please connect via /api/auth/youtube/login first."
+            detail="YouTube account not connected. Please click Connect YouTube Account to authenticate."
         )
 
     try:
@@ -338,11 +344,14 @@ def sync_live_youtube_subscriptions():
             )
         return {
             "success": True,
-            "message": f"Successfully live-synced {len(live_channels)} subscribed channels from YouTube!",
+            "message": f"Successfully live-synced {len(live_channels)} subscribed channels directly from your YouTube account!",
             "channels_count": len(live_channels)
         }
+    except PermissionError as pe:
+        raise HTTPException(status_code=401, detail=str(pe))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch live subscriptions: {str(e)}")
+
 
 
 
