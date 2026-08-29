@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   CheckCircle2,
   XCircle,
@@ -14,7 +14,10 @@ import {
   ChevronRight,
   TrendingUp,
   Loader2,
-  ListOrdered
+  ListOrdered,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { fetchScanAudit, rescanVideo } from '../api';
 
@@ -35,6 +38,10 @@ export default function ScanAuditLog({ onRescanTriggered }) {
   const [rescanningId, setRescanningId] = useState(null);
   const [actionMsg, setActionMsg] = useState(null);
 
+  // Sorting state: Default Scan Time DESC
+  const [sortField, setSortField] = useState('scanned_at');
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+
   const loadAuditLogs = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     try {
@@ -42,7 +49,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
         status: statusFilter,
         platform: platformFilter,
         search: search.trim() || undefined,
-        limit: 100
+        limit: 150
       });
       setAuditData(data);
     } catch (err) {
@@ -89,6 +96,65 @@ export default function ScanAuditLog({ onRescanTriggered }) {
     }
   };
 
+  const handleHeaderClick = (field) => {
+    if (sortField === field) {
+      // Toggle order
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc'); // Default to desc for newly clicked column
+    }
+  };
+
+  // Client-side multi-column sorting
+  const sortedItems = useMemo(() => {
+    const items = [...auditData.items];
+
+    return items.sort((a, b) => {
+      // Always keep active processing/queued items at the very top if sorting by date desc
+      if (sortField === 'scanned_at' && sortOrder === 'desc') {
+        const isAActive = a.status === 'PROCESSING' || a.status === 'QUEUED';
+        const isBActive = b.status === 'PROCESSING' || b.status === 'QUEUED';
+        if (isAActive && !isBActive) return -1;
+        if (!isAActive && isBActive) return 1;
+      }
+
+      let valA = a[sortField];
+      let valB = b[sortField];
+
+      if (sortField === 'scanned_at') {
+        const timeA = a.scanned_at ? new Date(a.scanned_at).getTime() : (a.status === 'PROCESSING' ? 9999999999999 : 0);
+        const timeB = b.scanned_at ? new Date(b.scanned_at).getTime() : (b.status === 'PROCESSING' ? 9999999999999 : 0);
+        return sortOrder === 'asc' ? timeA - timeB : timeB - timeA;
+      }
+
+      if (sortField === 'stocks_count') {
+        const countA = a.stocks_count || (a.tickers ? a.tickers.length : 0);
+        const countB = b.stocks_count || (b.tickers ? b.tickers.length : 0);
+        return sortOrder === 'asc' ? countA - countB : countB - countA;
+      }
+
+      // String comparison
+      valA = (valA || '').toString().toLowerCase();
+      valB = (valB || '').toString().toLowerCase();
+
+      if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [auditData.items, sortField, sortOrder]);
+
+  const renderSortIcon = (field) => {
+    if (sortField !== field) {
+      return <ArrowUpDown size={12} style={{ opacity: 0.35, marginLeft: '6px' }} />;
+    }
+    return sortOrder === 'asc' ? (
+      <ArrowUp size={13} style={{ color: 'var(--color-brand)', marginLeft: '6px', fontWeight: '800' }} />
+    ) : (
+      <ArrowDown size={13} style={{ color: 'var(--color-brand)', marginLeft: '6px', fontWeight: '800' }} />
+    );
+  };
+
   const getStatusBadge = (status) => {
     switch (status?.toUpperCase()) {
       case 'PROCESSING':
@@ -103,8 +169,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
             fontWeight: '700',
             background: 'rgba(99, 102, 241, 0.15)',
             color: 'var(--color-brand, #6366f1)',
-            border: '1px solid rgba(99, 102, 241, 0.35)',
-            animation: 'pulse 2s infinite'
+            border: '1px solid rgba(99, 102, 241, 0.35)'
           }}>
             <Loader2 size={13} className="spin" /> PROCESSING
           </span>
@@ -511,7 +576,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
             <RefreshCw size={24} className="spin" style={{ margin: '0 auto 12px' }} />
             <p style={{ fontWeight: '600' }}>Loading Scan Audit History...</p>
           </div>
-        ) : auditData.items.length === 0 ? (
+        ) : sortedItems.length === 0 ? (
           <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
             <FileText size={32} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
             <h3 style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '4px' }}>
@@ -536,19 +601,113 @@ export default function ScanAuditLog({ onRescanTriggered }) {
                   color: 'var(--text-muted)',
                   fontSize: '0.75rem',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em'
+                  letterSpacing: '0.05em',
+                  userSelect: 'none'
                 }}>
-                  <th style={{ padding: '14px 18px', fontWeight: '700' }}>Scan Time (Desc)</th>
-                  <th style={{ padding: '14px 18px', fontWeight: '700' }}>Platform</th>
-                  <th style={{ padding: '14px 18px', fontWeight: '700' }}>Creator</th>
-                  <th style={{ padding: '14px 18px', fontWeight: '700' }}>Video / Reel Title</th>
-                  <th style={{ padding: '14px 18px', fontWeight: '700' }}>Status</th>
-                  <th style={{ padding: '14px 18px', fontWeight: '700' }}>Stocks Found</th>
-                  <th style={{ padding: '14px 18px', fontWeight: '700', textAlign: 'right' }}>Actions</th>
+                  {/* Scan Time Header */}
+                  <th
+                    onClick={() => handleHeaderClick('scanned_at')}
+                    style={{
+                      padding: '14px 18px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      color: sortField === 'scanned_at' ? 'var(--color-brand)' : 'var(--text-muted)'
+                    }}
+                    title="Click to sort by Scan Time"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      SCAN TIME {renderSortIcon('scanned_at')}
+                    </div>
+                  </th>
+
+                  {/* Platform Header */}
+                  <th
+                    onClick={() => handleHeaderClick('platform')}
+                    style={{
+                      padding: '14px 18px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      color: sortField === 'platform' ? 'var(--color-brand)' : 'var(--text-muted)'
+                    }}
+                    title="Click to sort by Platform"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      PLATFORM {renderSortIcon('platform')}
+                    </div>
+                  </th>
+
+                  {/* Creator Header */}
+                  <th
+                    onClick={() => handleHeaderClick('channel_name')}
+                    style={{
+                      padding: '14px 18px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      color: sortField === 'channel_name' ? 'var(--color-brand)' : 'var(--text-muted)'
+                    }}
+                    title="Click to sort by Creator"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      CREATOR {renderSortIcon('channel_name')}
+                    </div>
+                  </th>
+
+                  {/* Video / Reel Title Header */}
+                  <th
+                    onClick={() => handleHeaderClick('title')}
+                    style={{
+                      padding: '14px 18px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      color: sortField === 'title' ? 'var(--color-brand)' : 'var(--text-muted)'
+                    }}
+                    title="Click to sort by Video Title"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      VIDEO / REEL TITLE {renderSortIcon('title')}
+                    </div>
+                  </th>
+
+                  {/* Status Header */}
+                  <th
+                    onClick={() => handleHeaderClick('status')}
+                    style={{
+                      padding: '14px 18px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      color: sortField === 'status' ? 'var(--color-brand)' : 'var(--text-muted)'
+                    }}
+                    title="Click to sort by Pass/Fail Status"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      STATUS {renderSortIcon('status')}
+                    </div>
+                  </th>
+
+                  {/* Stocks Found Header */}
+                  <th
+                    onClick={() => handleHeaderClick('stocks_count')}
+                    style={{
+                      padding: '14px 18px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      color: sortField === 'stocks_count' ? 'var(--color-brand)' : 'var(--text-muted)'
+                    }}
+                    title="Click to sort by Stocks Found"
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      STOCKS FOUND {renderSortIcon('stocks_count')}
+                    </div>
+                  </th>
+
+                  {/* Actions Header */}
+                  <th style={{ padding: '14px 18px', fontWeight: '700', textAlign: 'right' }}>
+                    ACTIONS
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {auditData.items.map((item, idx) => (
+                {sortedItems.map((item, idx) => (
                   <tr
                     key={item.id || idx}
                     style={{
