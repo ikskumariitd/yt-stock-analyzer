@@ -29,7 +29,7 @@ export default function ScanModal({ isOpen, onClose, onScanTriggered, scanStatus
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         backdropFilter: 'blur(8px)',
         zIndex: 50,
         display: 'flex',
@@ -45,9 +45,9 @@ export default function ScanModal({ isOpen, onClose, onScanTriggered, scanStatus
           width: '100%',
           maxWidth: '540px',
           padding: '28px',
-          background: '#0d1322',
-          border: '1px solid var(--border-glow)',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-subtle)',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.2)',
           position: 'relative'
         }}
         onClick={e => e.stopPropagation()}
@@ -67,7 +67,7 @@ export default function ScanModal({ isOpen, onClose, onScanTriggered, scanStatus
           <X size={20} />
         </button>
 
-        <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#ffffff', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '8px' }}>
           ⚡ Scan YouTube Video or Channel
         </h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
@@ -88,10 +88,10 @@ export default function ScanModal({ isOpen, onClose, onScanTriggered, scanStatus
               style={{
                 width: '100%',
                 padding: '12px 14px',
-                background: 'rgba(2, 6, 23, 0.8)',
+                background: 'var(--bg-input)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: '8px',
-                color: '#ffffff',
+                color: 'var(--text-primary)',
                 fontSize: '0.85rem',
                 outline: 'none'
               }}
@@ -100,58 +100,42 @@ export default function ScanModal({ isOpen, onClose, onScanTriggered, scanStatus
 
           <div style={{ marginBottom: '24px' }}>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-              If Channel, scan recent:
+              Channel Scan Depth (If Channel URL Provided)
             </label>
             <select
               value={limit}
               onChange={e => setLimit(Number(e.target.value))}
               style={{
                 width: '100%',
-                padding: '10px 12px',
-                background: 'rgba(2, 6, 23, 0.8)',
+                padding: '12px 14px',
+                background: 'var(--bg-input)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: '8px',
-                color: '#ffffff',
+                color: 'var(--text-primary)',
                 fontSize: '0.85rem',
-                outline: 'none'
+                outline: 'none',
+                cursor: 'pointer'
               }}
             >
               <option value={1}>Latest 1 Video</option>
               <option value={2}>Latest 2 Videos</option>
               <option value={3}>Latest 3 Videos</option>
               <option value={5}>Latest 5 Videos</option>
+              <option value={10}>Latest 10 Videos</option>
             </select>
           </div>
 
-          {/* Current Live Scan Status Box */}
-          {scanStatus?.is_scanning && (
-            <div style={{
-              background: 'rgba(99, 102, 241, 0.1)',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
-              borderRadius: '8px',
-              padding: '12px',
-              marginBottom: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              fontSize: '0.8rem',
-              color: '#a5b4fc'
-            }}>
-              <RefreshCw size={16} className="animate-spin" />
-              <span>{scanStatus.progress_message || 'Analyzing...'}</span>
-            </div>
-          )}
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
             <button
               type="button"
               onClick={onClose}
               style={{
-                padding: '10px 16px',
-                background: 'transparent',
+                padding: '10px 18px',
+                background: 'var(--bg-card-subtle)',
                 border: '1px solid var(--border-subtle)',
                 borderRadius: '8px',
                 color: 'var(--text-secondary)',
+                fontWeight: '600',
                 fontSize: '0.85rem',
                 cursor: 'pointer'
               }}
@@ -172,11 +156,12 @@ export default function ScanModal({ isOpen, onClose, onScanTriggered, scanStatus
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '6px',
+                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)'
               }}
             >
-              <Play size={14} fill="#ffffff" />
-              {loading ? 'Starting...' : 'Start Extraction'}
+              {loading ? <RefreshCw size={16} className="animate-spin" /> : <Play size={16} fill="#ffffff" />}
+              {loading ? 'Queuing...' : 'Start Extraction'}
             </button>
           </div>
         </form>

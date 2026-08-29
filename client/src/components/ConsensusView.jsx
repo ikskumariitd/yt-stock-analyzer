@@ -17,13 +17,13 @@ import {
 } from 'lucide-react';
 
 const SENTIMENT_COLORS = {
-  STRONG_BUY: { bg: 'rgba(16, 185, 129, 0.2)', border: 'rgba(16, 185, 129, 0.5)', text: '#34d399', label: 'STRONG BUY', bar: '#10b981' },
-  BUY: { bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.4)', text: '#34d399', label: 'BUY', bar: '#10b981' },
-  ACCUMULATE: { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.4)', text: '#60a5fa', label: 'ACCUMULATE', bar: '#3b82f6' },
-  WATCHLIST: { bg: 'rgba(234, 179, 8, 0.15)', border: 'rgba(234, 179, 8, 0.4)', text: '#facc15', label: 'WATCHLIST', bar: '#eab308' },
-  HOLD: { bg: 'rgba(234, 179, 8, 0.15)', border: 'rgba(234, 179, 8, 0.4)', text: '#facc15', label: 'HOLD', bar: '#eab308' },
-  SELL: { bg: 'rgba(239, 68, 68, 0.15)', border: 'rgba(239, 68, 68, 0.4)', text: '#f87171', label: 'SELL', bar: '#ef4444' },
-  AVOID: { bg: 'rgba(239, 68, 68, 0.2)', border: 'rgba(239, 68, 68, 0.5)', text: '#f87171', label: 'AVOID', bar: '#ef4444' }
+  STRONG_BUY: { bg: 'var(--color-buy-bg)', border: 'var(--color-buy-border)', text: 'var(--color-buy)', label: 'STRONG BUY', bar: '#10b981' },
+  BUY: { bg: 'var(--color-buy-bg)', border: 'var(--color-buy-border)', text: 'var(--color-buy)', label: 'BUY', bar: '#10b981' },
+  ACCUMULATE: { bg: 'var(--color-accumulate-bg)', border: 'var(--color-accumulate-border)', text: 'var(--color-accumulate)', label: 'ACCUMULATE', bar: '#0284c7' },
+  WATCHLIST: { bg: 'var(--color-watchlist-bg)', border: 'var(--color-watchlist-border)', text: 'var(--color-watchlist)', label: 'WATCHLIST', bar: '#d97706' },
+  HOLD: { bg: 'var(--color-watchlist-bg)', border: 'var(--color-watchlist-border)', text: 'var(--color-watchlist)', label: 'HOLD', bar: '#d97706' },
+  SELL: { bg: 'var(--color-sell-bg)', border: 'var(--color-sell-border)', text: 'var(--color-sell)', label: 'SELL', bar: '#e11d48' },
+  AVOID: { bg: 'var(--color-sell-bg)', border: 'var(--color-sell-border)', text: 'var(--color-sell)', label: 'AVOID', bar: '#e11d48' }
 };
 
 export default function ConsensusView({ consensusData = [], onSelectStock }) {
@@ -53,7 +53,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
     return (
       <div className="glass-panel" style={{ padding: '60px 20px', textAlign: 'center', margin: '40px 0' }}>
         <Layers size={40} color="var(--text-muted)" style={{ margin: '0 auto 16px' }} />
-        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: '#ffffff' }}>No matching consensus stocks found</h3>
+        <h3 style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-primary)' }}>No matching consensus stocks found</h3>
         <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '0.9rem' }}>
           Try clearing your search or adjusting your date timeframe.
         </p>
@@ -66,7 +66,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
       {/* Top Header Controls: Quick Bulk Expand / Collapse */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}>
         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
-          Found <strong style={{ color: '#ffffff' }}>{consensusData.length}</strong> Stocks with Multi-Creator Intelligence
+          Found <strong style={{ color: 'var(--text-primary)' }}>{consensusData.length}</strong> Stocks with Multi-Creator Intelligence
         </span>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -76,14 +76,15 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              background: 'rgba(255, 255, 255, 0.05)',
+              background: 'var(--bg-card)',
               border: '1px solid var(--border-subtle)',
-              color: '#cbd5e1',
+              color: 'var(--text-secondary)',
               padding: '6px 12px',
               borderRadius: '8px',
               fontSize: '0.75rem',
               fontWeight: '700',
               cursor: 'pointer',
+              boxShadow: 'var(--shadow-card)',
               transition: 'all 0.15s ease'
             }}
           >
@@ -108,11 +109,11 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
             style={{
               position: 'relative',
               borderRadius: '16px',
-              background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.85) 100%)',
-              border: isExpanded ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+              background: 'var(--bg-card)',
+              border: isExpanded ? '1px solid var(--color-brand)' : '1px solid var(--border-subtle)',
               boxShadow: isExpanded
-                ? '0 16px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(99, 102, 241, 0.1)'
-                : '0 4px 20px rgba(0, 0, 0, 0.25)',
+                ? '0 12px 32px rgba(99, 102, 241, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05)'
+                : 'var(--shadow-card)',
               overflow: 'hidden',
               transition: 'all 0.2s ease'
             }}
@@ -136,8 +137,8 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                 gap: '16px',
                 cursor: 'pointer',
                 userSelect: 'none',
-                background: isExpanded ? 'rgba(255, 255, 255, 0.02)' : 'transparent',
-                borderBottom: isExpanded ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
+                background: isExpanded ? 'var(--bg-card-subtle)' : 'transparent',
+                borderBottom: isExpanded ? '1px solid var(--border-subtle)' : 'none',
                 transition: 'background 0.2s ease'
               }}
             >
@@ -145,21 +146,21 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 <div style={{
                   padding: '8px 16px',
-                  background: 'rgba(99, 102, 241, 0.25)',
-                  border: '1px solid rgba(99, 102, 241, 0.5)',
+                  background: 'rgba(99, 102, 241, 0.12)',
+                  border: '1px solid rgba(99, 102, 241, 0.35)',
                   borderRadius: '10px',
                   fontWeight: '900',
-                  fontSize: '1.4rem',
-                  color: '#ffffff',
+                  fontSize: '1.35rem',
+                  color: 'var(--color-brand)',
                   letterSpacing: '0.04em',
-                  boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)'
+                  boxShadow: '0 2px 8px rgba(99, 102, 241, 0.15)'
                 }}>
                   {stock.ticker}
                 </div>
 
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: '#ffffff', letterSpacing: '-0.01em', margin: 0 }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.01em', margin: 0 }}>
                       {stock.company_name}
                     </h3>
                     <span style={{
@@ -177,7 +178,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#a5b4fc', fontWeight: '700' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--color-brand)', fontWeight: '700' }}>
                       <Users size={14} /> {stock.total_calls} {stock.total_calls === 1 ? 'Review' : 'Reviews'} across {stock.unique_creators} {stock.unique_creators === 1 ? 'Creator' : 'Creators'}
                     </span>
                     <span style={{ color: 'var(--text-muted)' }}>•</span>
@@ -191,7 +192,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
               {/* Right: Targets & Expand/Close Toggle Button */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                 {stock.targets.length > 0 && (
-                  <div style={{ textAlign: 'right', display: 'none', md: 'block' }}>
+                  <div style={{ textAlign: 'right' }}>
                     <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: '600' }}>Price Targets</span>
                     <span style={{ fontSize: '0.9rem', fontWeight: '800', color: 'var(--color-buy)' }}>
                       {stock.targets.slice(0, 2).join(' / ')}
@@ -205,9 +206,9 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                     toggleExpand(stock.ticker);
                   }}
                   style={{
-                    background: isExpanded ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255, 255, 255, 0.08)',
-                    border: isExpanded ? '1px solid rgba(99, 102, 241, 0.6)' : '1px solid rgba(255, 255, 255, 0.15)',
-                    color: '#ffffff',
+                    background: isExpanded ? 'rgba(99, 102, 241, 0.15)' : 'var(--bg-card-subtle)',
+                    border: isExpanded ? '1px solid var(--color-brand)' : '1px solid var(--border-subtle)',
+                    color: isExpanded ? 'var(--color-brand)' : 'var(--text-primary)',
                     padding: '8px 14px',
                     borderRadius: '8px',
                     cursor: 'pointer',
@@ -216,7 +217,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                     gap: '6px',
                     fontSize: '0.75rem',
                     fontWeight: '800',
-                    boxShadow: isExpanded ? '0 0 10px rgba(99, 102, 241, 0.3)' : 'none',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                     transition: 'all 0.15s ease'
                   }}
                 >
@@ -247,9 +248,9 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                       fontWeight: '700',
                       padding: '2px 8px',
                       borderRadius: '6px',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      color: '#cbd5e1'
+                      background: 'var(--bg-card-subtle)',
+                      border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-secondary)'
                     }}
                   >
                     👤 {cName}
@@ -260,7 +261,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
 
             {/* Expanded Detailed Creator Reviews with Connected Left Timeline Rail */}
             {isExpanded && (
-              <div style={{ padding: '20px 24px 24px' }}>
+              <div style={{ padding: '20px 24px 24px', background: 'var(--bg-card-subtle)' }}>
                 <div style={{
                   fontSize: '0.75rem',
                   fontWeight: '800',
@@ -272,7 +273,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                   alignItems: 'center',
                   gap: '8px'
                 }}>
-                  <Video size={14} color="#818cf8" />
+                  <Video size={14} color="var(--color-brand)" />
                   Creator Timeline & Stances for {stock.ticker}:
                 </div>
 
@@ -297,14 +298,14 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                         key={call.id || idx}
                         style={{
                           position: 'relative',
-                          background: 'rgba(30, 41, 59, 0.45)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          background: 'var(--bg-card)',
+                          border: '1px solid var(--border-subtle)',
                           borderRadius: '14px',
                           padding: '18px 20px',
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '12px',
-                          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.2)'
+                          boxShadow: 'var(--shadow-card)'
                         }}
                       >
                         {/* Glowing Timeline Dot */}
@@ -316,7 +317,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                           height: '12px',
                           borderRadius: '50%',
                           background: sentStyle.bar,
-                          border: '2px solid #020617',
+                          border: '2px solid var(--bg-card)',
                           boxShadow: `0 0 8px ${sentStyle.bar}`
                         }} />
 
@@ -327,8 +328,8 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                               width: '32px',
                               height: '32px',
                               borderRadius: '8px',
-                              background: 'rgba(99, 102, 241, 0.25)',
-                              color: '#a5b4fc',
+                              background: 'rgba(99, 102, 241, 0.12)',
+                              color: 'var(--color-brand)',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -338,7 +339,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                               {call.channel_name ? call.channel_name[0].toUpperCase() : 'Y'}
                             </div>
                             <div>
-                              <span style={{ fontWeight: '800', fontSize: '0.95rem', color: '#ffffff' }}>
+                              <span style={{ fontWeight: '800', fontSize: '0.95rem', color: 'var(--text-primary)' }}>
                                 {call.channel_name}
                               </span>
                               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '10px' }}>
@@ -352,13 +353,12 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                             <span style={{
                               padding: '4px 10px',
                               borderRadius: '6px',
-                              background: 'rgba(99, 102, 241, 0.25)',
-                              border: '1px solid rgba(99, 102, 241, 0.5)',
-                              color: '#ffffff',
+                              background: 'rgba(99, 102, 241, 0.12)',
+                              border: '1px solid rgba(99, 102, 241, 0.3)',
+                              color: 'var(--color-brand)',
                               fontSize: '0.8rem',
                               fontWeight: '900',
-                              letterSpacing: '0.04em',
-                              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+                              letterSpacing: '0.04em'
                             }}>
                               {call.ticker || stock.ticker}
                             </span>
@@ -378,8 +378,8 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                               <span style={{
                                 padding: '4px 8px',
                                 borderRadius: '6px',
-                                background: 'rgba(255, 255, 255, 0.06)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                background: 'var(--bg-card-subtle)',
+                                border: '1px solid var(--border-subtle)',
                                 color: 'var(--text-secondary)',
                                 fontSize: '0.7rem',
                                 fontWeight: '700'
@@ -391,7 +391,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                         </div>
 
                         {/* Video Title */}
-                        <p style={{ fontSize: '0.85rem', color: '#cbd5e1', fontStyle: 'italic', margin: '0' }}>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontStyle: 'italic', margin: '0' }}>
                           "{call.video_title}"
                         </p>
 
@@ -400,8 +400,8 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                           display: 'grid',
                           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
                           gap: '10px',
-                          background: 'rgba(2, 6, 23, 0.7)',
-                          border: '1px solid rgba(255, 255, 255, 0.06)',
+                          background: 'var(--bg-card-subtle)',
+                          border: '1px solid var(--border-subtle)',
                           padding: '12px 16px',
                           borderRadius: '10px'
                         }}>
@@ -416,7 +416,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                           {call.target_price && (
                             <div>
                               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: '600' }}>Target Price</span>
-                              <span style={{ fontSize: '0.9rem', fontWeight: '800', color: 'var(--color-accent)' }}>
+                              <span style={{ fontSize: '0.9rem', fontWeight: '800', color: 'var(--color-accumulate)' }}>
                                 {call.target_price}
                               </span>
                             </div>
@@ -434,10 +434,10 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                         {/* Quote excerpt */}
                         {call.quote_excerpt && (
                           <div style={{
-                            borderLeft: '3px solid rgba(99, 102, 241, 0.6)',
+                            borderLeft: '3px solid var(--color-brand)',
                             paddingLeft: '12px',
                             fontSize: '0.8rem',
-                            color: '#94a3b8',
+                            color: 'var(--text-secondary)',
                             lineHeight: '1.45',
                             fontStyle: 'italic'
                           }}>
@@ -452,7 +452,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: '#818cf8',
+                              color: 'var(--color-brand)',
                               fontSize: '0.8rem',
                               fontWeight: '700',
                               cursor: 'pointer',
@@ -472,9 +472,9 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '6px',
-                                background: 'rgba(239, 68, 68, 0.15)',
-                                border: '1px solid rgba(239, 68, 68, 0.35)',
-                                color: '#f87171',
+                                background: 'var(--color-sell-bg)',
+                                border: '1px solid var(--color-sell-border)',
+                                color: 'var(--color-sell)',
                                 padding: '6px 14px',
                                 borderRadius: '8px',
                                 fontSize: '0.75rem',

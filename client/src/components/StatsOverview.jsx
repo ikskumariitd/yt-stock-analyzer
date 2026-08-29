@@ -22,8 +22,8 @@ export default function StatsOverview({ stats, onSelectTicker }) {
           width: '48px',
           height: '48px',
           borderRadius: '12px',
-          background: 'rgba(99, 102, 241, 0.15)',
-          color: '#818cf8',
+          background: 'rgba(99, 102, 241, 0.12)',
+          color: 'var(--color-brand)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
@@ -35,7 +35,7 @@ export default function StatsOverview({ stats, onSelectTicker }) {
             Total Stock Calls
           </p>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <h3 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#ffffff' }}>
+            <h3 style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--text-primary)' }}>
               {stats.total_recommendations || 0}
             </h3>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -51,8 +51,8 @@ export default function StatsOverview({ stats, onSelectTicker }) {
           width: '48px',
           height: '48px',
           borderRadius: '12px',
-          background: 'rgba(16, 185, 129, 0.15)',
-          color: '#34d399',
+          background: 'var(--color-buy-bg)',
+          color: 'var(--color-buy)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
@@ -80,8 +80,8 @@ export default function StatsOverview({ stats, onSelectTicker }) {
           width: '48px',
           height: '48px',
           borderRadius: '12px',
-          background: 'rgba(6, 182, 212, 0.15)',
-          color: '#22d3ee',
+          background: 'rgba(6, 182, 212, 0.12)',
+          color: 'var(--color-accumulate)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
@@ -93,7 +93,7 @@ export default function StatsOverview({ stats, onSelectTicker }) {
             Monitored Creators
           </p>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px' }}>
-            <h3 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#ffffff' }}>
+            <h3 style={{ fontSize: '1.75rem', fontWeight: '800', color: 'var(--text-primary)' }}>
               {stats.active_channels || 0}
             </h3>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -117,9 +117,9 @@ export default function StatsOverview({ stats, onSelectTicker }) {
               key={t.ticker}
               onClick={() => onSelectTicker && onSelectTicker(t.ticker)}
               style={{
-                background: 'rgba(255, 255, 255, 0.06)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                color: '#ffffff',
+                background: 'var(--bg-card-subtle)',
+                border: '1px solid var(--border-subtle)',
+                color: 'var(--text-primary)',
                 padding: '4px 8px',
                 borderRadius: '6px',
                 fontSize: '0.75rem',
@@ -131,15 +131,16 @@ export default function StatsOverview({ stats, onSelectTicker }) {
               onMouseOver={e => {
                 e.currentTarget.style.background = 'var(--color-brand)';
                 e.currentTarget.style.borderColor = 'var(--color-brand)';
+                e.currentTarget.style.color = '#ffffff';
               }}
               onMouseOut={e => {
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                e.currentTarget.style.background = 'var(--bg-card-subtle)';
+                e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                e.currentTarget.style.color = 'var(--text-primary)';
               }}
             >
               {t.ticker}
             </button>
-
           ))}
         </div>
       </div>

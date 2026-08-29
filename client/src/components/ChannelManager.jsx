@@ -104,19 +104,33 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
     }
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
-    setScanAfterDate(d.toISOString().split('T')[0]);
+    setScanAfterDate(d.toISOString().slice(0, 10));
   };
 
   return (
-    <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-      {/* Top Banner & Batch Scan Controls with Date Filter */}
-      <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+      {/* Top Banner: Monitored Channels + Scan All Actions */}
+      <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
           <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-              <Tv size={22} color="#6366f1" /> Monitored YouTube Creators ({channels?.length || 0})
-            </h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px', margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '10px',
+                background: 'rgba(99, 102, 241, 0.12)',
+                color: 'var(--color-brand)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Tv size={20} />
+              </div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>
+                Monitored YouTube Creators
+              </h2>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '6px' }}>
               The AI watcher scans these channels automatically to ingest new stock picks and key price levels.
             </p>
           </div>
@@ -130,16 +144,16 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               alignItems: 'center',
               gap: '8px',
               background: authStatus?.connected
-                ? 'rgba(16, 185, 129, 0.15)'
+                ? 'var(--color-buy-bg)'
                 : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-              border: authStatus?.connected ? '1px solid rgba(16, 185, 129, 0.4)' : 'none',
+              border: authStatus?.connected ? '1px solid var(--color-buy-border)' : 'none',
               color: authStatus?.connected ? 'var(--color-buy)' : '#ffffff',
               padding: '8px 14px',
               borderRadius: '8px',
               fontWeight: '700',
               fontSize: '0.8rem',
               cursor: isSyncing ? 'not-allowed' : 'pointer',
-              boxShadow: authStatus?.connected ? 'none' : '0 4px 14px rgba(239, 68, 68, 0.3)',
+              boxShadow: authStatus?.connected ? 'none' : '0 4px 14px rgba(239, 68, 68, 0.25)',
               transition: 'all 0.15s ease'
             }}
           >
@@ -166,15 +180,15 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
           flexWrap: 'wrap',
           gap: '14px',
           padding: '14px 18px',
-          background: 'rgba(2, 6, 23, 0.65)',
-          border: '1px solid rgba(99, 102, 241, 0.25)',
+          background: 'var(--bg-card-subtle)',
+          border: '1px solid var(--border-subtle)',
           borderRadius: '12px'
         }}>
           {/* Published After Date Filter */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Calendar size={15} color="#818cf8" />
-              <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#cbd5e1' }}>
+              <Calendar size={15} color="var(--color-brand)" />
+              <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-primary)' }}>
                 Scan Videos After Date:
               </span>
             </div>
@@ -185,9 +199,9 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 value={scanAfterDate}
                 onChange={e => setScanAfterDate(e.target.value)}
                 style={{
-                  background: 'rgba(15, 23, 42, 0.9)',
-                  border: '1px solid rgba(99, 102, 241, 0.4)',
-                  color: '#ffffff',
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-primary)',
                   padding: '6px 10px',
                   borderRadius: '6px',
                   fontSize: '0.8rem',
@@ -201,9 +215,9 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                   onClick={() => setScanAfterDate('')}
                   title="Clear Date Filter"
                   style={{
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    border: 'none',
-                    color: '#94a3b8',
+                    background: 'var(--bg-card-subtle)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-muted)',
                     padding: '6px',
                     borderRadius: '6px',
                     cursor: 'pointer',
@@ -221,7 +235,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               <button
                 onClick={() => setQuickDateOffset(1)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
+                  background: 'var(--bg-input)',
                   border: '1px solid var(--border-subtle)',
                   color: 'var(--text-secondary)',
                   padding: '3px 8px',
@@ -236,7 +250,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               <button
                 onClick={() => setQuickDateOffset(7)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
+                  background: 'var(--bg-input)',
                   border: '1px solid var(--border-subtle)',
                   color: 'var(--text-secondary)',
                   padding: '3px 8px',
@@ -251,7 +265,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               <button
                 onClick={() => setQuickDateOffset(30)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
+                  background: 'var(--bg-input)',
                   border: '1px solid var(--border-subtle)',
                   color: 'var(--text-secondary)',
                   padding: '3px 8px',
@@ -266,7 +280,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               <button
                 onClick={() => setQuickDateOffset(0)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.05)',
+                  background: 'var(--bg-input)',
                   border: '1px solid var(--border-subtle)',
                   color: 'var(--text-secondary)',
                   padding: '3px 8px',
@@ -289,9 +303,9 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 value={scanLimit}
                 onChange={e => setScanLimit(Number(e.target.value))}
                 style={{
-                  background: 'rgba(15, 23, 42, 0.9)',
+                  background: 'var(--bg-input)',
                   border: '1px solid var(--border-subtle)',
-                  color: '#ffffff',
+                  color: 'var(--text-primary)',
                   padding: '7px 10px',
                   borderRadius: '6px',
                   fontSize: '0.8rem',
@@ -324,7 +338,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 fontWeight: '800',
                 fontSize: '0.85rem',
                 cursor: isScanning ? 'not-allowed' : 'pointer',
-                boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)',
+                boxShadow: '0 4px 14px rgba(99, 102, 241, 0.25)',
                 opacity: isScanning ? 0.7 : 1
               }}
             >
@@ -337,7 +351,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
 
       {/* Add Channel Form */}
       <div className="glass-panel" style={{ padding: '20px', marginBottom: '24px' }}>
-        <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#ffffff', marginBottom: '12px' }}>
+        <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '12px' }}>
           + Add New YouTube Creator
         </h3>
         <form onSubmit={handleAdd} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
@@ -350,10 +364,10 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
             style={{
               flex: '2 1 240px',
               padding: '10px 14px',
-              background: 'rgba(2, 6, 23, 0.7)',
+              background: 'var(--bg-input)',
               border: '1px solid var(--border-subtle)',
               borderRadius: '8px',
-              color: '#ffffff',
+              color: 'var(--text-primary)',
               fontSize: '0.85rem',
               outline: 'none'
             }}
@@ -366,10 +380,10 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
             style={{
               flex: '1 1 180px',
               padding: '10px 14px',
-              background: 'rgba(2, 6, 23, 0.7)',
+              background: 'var(--bg-input)',
               border: '1px solid var(--border-subtle)',
               borderRadius: '8px',
-              color: '#ffffff',
+              color: 'var(--text-primary)',
               fontSize: '0.85rem',
               outline: 'none'
             }}
@@ -379,8 +393,8 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
             disabled={isSubmitting}
             style={{
               padding: '10px 20px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
+              background: 'var(--color-brand)',
+              border: 'none',
               borderRadius: '8px',
               color: '#ffffff',
               fontWeight: '700',
@@ -416,7 +430,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 width: '44px',
                 height: '44px',
                 borderRadius: '12px',
-                background: ch.enabled ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                background: ch.enabled ? 'var(--color-buy-bg)' : 'var(--bg-card-subtle)',
                 color: ch.enabled ? 'var(--color-buy)' : 'var(--text-muted)',
                 display: 'flex',
                 alignItems: 'center',
@@ -428,7 +442,7 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <h4 style={{ fontSize: '1rem', fontWeight: '800', color: '#ffffff', margin: 0 }}>
+                  <h4 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>
                     {ch.name}
                   </h4>
                   <a
@@ -452,9 +466,9 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
                   <span style={{
                     fontSize: '0.75rem',
-                    background: 'rgba(99, 102, 241, 0.15)',
-                    border: '1px solid rgba(99, 102, 241, 0.3)',
-                    color: '#a5b4fc',
+                    background: 'rgba(99, 102, 241, 0.1)',
+                    border: '1px solid rgba(99, 102, 241, 0.25)',
+                    color: 'var(--color-brand)',
                     padding: '2px 8px',
                     borderRadius: '6px',
                     fontWeight: '700'
@@ -463,9 +477,9 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                   </span>
                   <span style={{
                     fontSize: '0.75rem',
-                    background: 'rgba(16, 185, 129, 0.15)',
-                    border: '1px solid rgba(16, 185, 129, 0.3)',
-                    color: '#34d399',
+                    background: 'var(--color-buy-bg)',
+                    border: '1px solid var(--color-buy-border)',
+                    color: 'var(--color-buy)',
                     padding: '2px 8px',
                     borderRadius: '6px',
                     fontWeight: '700'
@@ -486,10 +500,10 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               display: 'flex',
               alignItems: 'center',
               gap: '10px',
-              background: 'rgba(2, 6, 23, 0.5)',
+              background: 'var(--bg-card-subtle)',
               padding: '6px 12px',
               borderRadius: '10px',
-              border: '1px solid rgba(255, 255, 255, 0.08)'
+              border: '1px solid var(--border-subtle)'
             }}>
               {/* Per-Channel Video Limit Selector */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -498,10 +512,10 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                   value={channelLimits[ch.id] || 2}
                   onChange={e => setChannelLimits(prev => ({ ...prev, [ch.id]: parseInt(e.target.value) }))}
                   style={{
-                    background: 'rgba(15, 23, 42, 0.9)',
+                    background: 'var(--bg-input)',
                     border: '1px solid var(--border-subtle)',
                     borderRadius: '6px',
-                    color: '#ffffff',
+                    color: 'var(--text-primary)',
                     padding: '4px 8px',
                     fontSize: '0.75rem',
                     fontWeight: '700',
@@ -524,8 +538,8 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 onClick={() => handleScanSingle(ch)}
                 title="Scan channel (Skips already analyzed videos automatically)"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(16, 185, 129, 0.3))',
-                  border: '1px solid rgba(99, 102, 241, 0.5)',
+                  background: 'var(--color-brand)',
+                  border: 'none',
                   color: '#ffffff',
                   padding: '6px 14px',
                   borderRadius: '6px',
@@ -534,7 +548,8 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '6px',
+                  boxShadow: '0 2px 8px var(--color-brand-glow)'
                 }}
               >
                 <Play size={12} fill="#ffffff" /> Scan Channel
@@ -544,8 +559,8 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               <button
                 onClick={() => handleToggle(ch.id)}
                 style={{
-                  background: ch.enabled ? 'rgba(16, 185, 129, 0.2)' : 'rgba(244, 63, 94, 0.2)',
-                  border: ch.enabled ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(244, 63, 94, 0.4)',
+                  background: ch.enabled ? 'var(--color-buy-bg)' : 'var(--color-sell-bg)',
+                  border: ch.enabled ? '1px solid var(--color-buy-border)' : '1px solid var(--color-sell-border)',
                   color: ch.enabled ? 'var(--color-buy)' : 'var(--color-sell)',
                   padding: '6px 10px',
                   borderRadius: '6px',
@@ -562,9 +577,9 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 onClick={() => handleDelete(ch.id, ch.name)}
                 title="Remove Channel"
                 style={{
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  border: '1px solid rgba(239, 68, 68, 0.2)',
-                  color: '#f87171',
+                  background: 'var(--color-sell-bg)',
+                  border: '1px solid var(--color-sell-border)',
+                  color: 'var(--color-sell)',
                   padding: '6px 8px',
                   borderRadius: '6px',
                   cursor: 'pointer',

@@ -21,8 +21,23 @@ import { RefreshCw, Radio, Search } from 'lucide-react';
 export default function App() {
   const [activeTab, setActiveTab] = useState('stocks'); // 'stocks' | 'channels'
   const [viewMode, setViewMode] = useState('consensus'); // 'consensus' (default clubbed) | 'individual'
-
   
+  // Theme state: Light Theme default
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('alphapulse_theme') || 'light';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('alphapulse_theme', theme);
+    if (theme === 'dark') {
+      document.body.classList.add('dark-theme');
+      document.body.classList.remove('light-theme');
+    } else {
+      document.body.classList.remove('dark-theme');
+      document.body.classList.add('light-theme');
+    }
+  }, [theme]);
+
   // Data state
   const [recommendations, setRecommendations] = useState([]);
   const [consensusData, setConsensusData] = useState([]);
@@ -64,7 +79,6 @@ export default function App() {
       if (!isSilent) setLoading(false);
     }
   }, [search, sentiment, channel, days, sortBy, viewMode]);
-
 
   useEffect(() => {
     loadData();
@@ -114,30 +128,30 @@ export default function App() {
     }
   };
 
-
-
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
+      {/* Header with Theme Switcher */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenScanModal={() => setIsScanModalOpen(true)}
         isScanning={scanStatus?.is_scanning}
+        theme={theme}
+        setTheme={setTheme}
       />
 
       {/* Sequential 1-at-a-time Scan Queue Progress Banner */}
       {scanStatus?.is_scanning && (
-        <div style={{ background: 'rgba(15, 23, 42, 0.95)', borderBottom: '1px solid rgba(99, 102, 241, 0.3)', padding: '12px 24px' }}>
+        <div style={{ background: 'var(--bg-card-subtle)', borderBottom: '1px solid var(--border-subtle)', padding: '12px 24px' }}>
           <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1', minWidth: '280px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#6366f1', boxShadow: '0 0 10px #6366f1' }} className="animate-pulse" />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--color-brand)', boxShadow: '0 0 10px var(--color-brand)' }} className="animate-pulse" />
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#ffffff' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--text-primary)' }}>
                     Sequential Worker Active (1-at-a-Time)
                   </span>
-                  <span style={{ fontSize: '0.75rem', background: 'rgba(99, 102, 241, 0.2)', color: '#818cf8', padding: '2px 8px', borderRadius: '4px', fontWeight: '700' }}>
+                  <span style={{ fontSize: '0.75rem', background: 'rgba(99, 102, 241, 0.12)', color: 'var(--color-brand)', padding: '2px 8px', borderRadius: '4px', fontWeight: '700' }}>
                     {scanStatus.completed_count} / {scanStatus.total_in_batch} Done ({scanStatus.progress_percent}%)
                   </span>
                 </div>
@@ -149,7 +163,7 @@ export default function App() {
 
             {/* Progress Bar & Clear Action */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: '1', minWidth: '240px', justifyContent: 'flex-end' }}>
-              <div style={{ width: '100%', maxWidth: '240px', height: '6px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '999px', overflow: 'hidden' }}>
+              <div style={{ width: '100%', maxWidth: '240px', height: '6px', background: 'var(--border-subtle)', borderRadius: '999px', overflow: 'hidden' }}>
                 <div style={{ width: `${scanStatus.progress_percent || 5}%`, height: '100%', background: 'linear-gradient(90deg, #6366f1, #10b981)', transition: 'width 0.3s ease' }} />
               </div>
               <button
@@ -159,9 +173,9 @@ export default function App() {
                   setScanStatus(s);
                 }}
                 style={{
-                  background: 'rgba(239, 68, 68, 0.15)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  color: '#f87171',
+                  background: 'var(--color-sell-bg)',
+                  border: '1px solid var(--color-sell-border)',
+                  color: 'var(--color-sell)',
                   padding: '4px 10px',
                   borderRadius: '6px',
                   fontSize: '0.75rem',
@@ -178,37 +192,6 @@ export default function App() {
 
       {/* Main Container */}
       <main style={{ flex: 1, maxWidth: '1400px', width: '100%', margin: '0 auto', padding: '24px' }}>
-        {/* Scanning Banner if active */}
-        {scanStatus?.is_scanning && (
-          <div
-            className="glass-panel animate-fade-in"
-            style={{
-              padding: '14px 20px',
-              marginBottom: '20px',
-              border: '1px solid rgba(99, 102, 241, 0.4)',
-              background: 'rgba(99, 102, 241, 0.12)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '12px'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <RefreshCw size={18} className="animate-spin" color="#818cf8" />
-              <div>
-                <strong style={{ color: '#ffffff', fontSize: '0.85rem' }}>AI Extraction in Progress:</strong>{' '}
-                <span style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>
-                  {scanStatus.progress_message}
-                </span>
-              </div>
-            </div>
-            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-              Extracting buy levels with Gemini 3.7...
-            </span>
-          </div>
-        )}
-
         {/* Tab 1: Stock Radar */}
         {activeTab === 'stocks' && (
           <div>
@@ -236,11 +219,10 @@ export default function App() {
               setViewMode={setViewMode}
             />
 
-
             {/* Recommendations or Consensus View */}
             {loading ? (
               <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <RefreshCw size={32} className="animate-spin" style={{ margin: '0 auto 12px' }} />
+                <RefreshCw size={32} className="animate-spin" style={{ margin: '0 auto 12px', color: 'var(--color-brand)' }} />
                 <p>Loading real-time stock recommendations...</p>
               </div>
             ) : viewMode === 'consensus' ? (
@@ -258,10 +240,10 @@ export default function App() {
                 }}
               >
                 <Search size={40} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
-                <h3 style={{ fontSize: '1.1rem', color: '#ffffff', marginBottom: '6px' }}>
+                <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: '6px' }}>
                   No stock recommendations matched your filters
                 </h3>
-                <p style={{ fontSize: '0.85rem', maxWidth: '400px', margin: '0 auto 16px' }}>
+                <p style={{ fontSize: '0.85rem', maxWidth: '400px', margin: '0 auto 16px', color: 'var(--text-secondary)' }}>
                   Try resetting the search or sentiment filters, or trigger a new scan on your subscribed channels.
                 </p>
                 <button
@@ -279,7 +261,6 @@ export default function App() {
                 >
                   Reset All Filters
                 </button>
-
               </div>
             ) : (
               <div style={{
@@ -291,14 +272,13 @@ export default function App() {
                   <StockCard
                     key={rec.id || idx}
                     recommendation={rec}
-                    onSelect={setSelectedStock}
+                    onOpenDetail={setSelectedStock}
                   />
                 ))}
               </div>
             )}
           </div>
         )}
-
 
         {/* Tab 2: Channels Manager */}
         {activeTab === 'channels' && (
@@ -318,7 +298,7 @@ export default function App() {
         textAlign: 'center',
         fontSize: '0.8rem',
         color: 'var(--text-muted)',
-        background: 'rgba(7, 9, 14, 0.9)'
+        background: 'var(--header-bg)'
       }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <span>AlphaPulse AI — Powered by Google Gemini 3.7</span>

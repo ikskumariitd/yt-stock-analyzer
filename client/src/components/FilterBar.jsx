@@ -65,23 +65,30 @@ export default function FilterBar({
           }} />
           <input
             type="text"
-            placeholder="Search Ticker (IREN, NVDA), Company, Catalyst..."
+            placeholder="Search Ticker (IREN, NVDA, APP), Company, Catalyst..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             style={{
               width: '100%',
               padding: '10px 36px 10px 38px',
-              background: 'rgba(2, 6, 23, 0.7)',
+              background: 'var(--bg-input)',
               border: '1px solid var(--border-subtle)',
               borderRadius: '10px',
-              color: '#ffffff',
+              color: 'var(--text-primary)',
               fontSize: '0.85rem',
               outline: 'none',
               fontFamily: 'var(--font-main)',
-              transition: 'border-color 0.2s'
+              transition: 'border-color 0.2s, box-shadow 0.2s',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)'
             }}
-            onFocus={e => e.target.style.borderColor = 'var(--color-brand)'}
-            onBlur={e => e.target.style.borderColor = 'var(--border-subtle)'}
+            onFocus={e => {
+              e.target.style.borderColor = 'var(--color-brand)';
+              e.target.style.boxShadow = '0 0 0 3px var(--border-glow)';
+            }}
+            onBlur={e => {
+              e.target.style.borderColor = 'var(--border-subtle)';
+              e.target.style.boxShadow = 'none';
+            }}
           />
           {search && (
             <button
@@ -105,7 +112,7 @@ export default function FilterBar({
         {/* View Switcher: Individual vs Consensus Clubbed */}
         <div style={{
           display: 'flex',
-          background: 'rgba(2, 6, 23, 0.8)',
+          background: 'var(--nav-bg)',
           border: '1px solid var(--border-subtle)',
           borderRadius: '8px',
           padding: '3px',
@@ -117,11 +124,12 @@ export default function FilterBar({
               padding: '7px 14px',
               borderRadius: '6px',
               border: 'none',
-              background: viewMode === 'consensus' ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(16, 185, 129, 0.4))' : 'transparent',
-              color: viewMode === 'consensus' ? '#ffffff' : 'var(--text-muted)',
+              background: viewMode === 'consensus' ? 'var(--bg-card)' : 'transparent',
+              color: viewMode === 'consensus' ? 'var(--color-brand)' : 'var(--text-muted)',
               fontSize: '0.8rem',
               fontWeight: '800',
               cursor: 'pointer',
+              boxShadow: viewMode === 'consensus' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
               transition: 'all 0.15s ease'
             }}
           >
@@ -133,11 +141,12 @@ export default function FilterBar({
               padding: '7px 14px',
               borderRadius: '6px',
               border: 'none',
-              background: viewMode === 'individual' ? 'rgba(99, 102, 241, 0.3)' : 'transparent',
-              color: viewMode === 'individual' ? '#ffffff' : 'var(--text-muted)',
+              background: viewMode === 'individual' ? 'var(--bg-card)' : 'transparent',
+              color: viewMode === 'individual' ? 'var(--color-brand)' : 'var(--text-muted)',
               fontSize: '0.8rem',
               fontWeight: '800',
               cursor: 'pointer',
+              boxShadow: viewMode === 'individual' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
               transition: 'all 0.15s ease'
             }}
           >
@@ -152,7 +161,7 @@ export default function FilterBar({
             onChange={e => setChannel(e.target.value)}
             style={{
               padding: '8px 12px',
-              background: 'rgba(2, 6, 23, 0.7)',
+              background: 'var(--bg-input)',
               border: '1px solid var(--border-subtle)',
               borderRadius: '8px',
               color: 'var(--text-primary)',
@@ -183,12 +192,12 @@ export default function FilterBar({
         justifyContent: 'space-between',
         gap: '12px',
         paddingTop: '12px',
-        borderTop: '1px solid rgba(255, 255, 255, 0.05)'
+        borderTop: '1px solid var(--border-subtle)'
       }}>
         {/* Date Filter Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
-            <Calendar size={13} color="#818cf8" /> Timeframe:
+            <Calendar size={13} color="var(--color-brand)" /> Timeframe:
           </span>
           {DATE_OPTIONS.map(dOpt => {
             const isSelected = days === dOpt.id;
@@ -201,9 +210,9 @@ export default function FilterBar({
                   borderRadius: '6px',
                   fontSize: '0.75rem',
                   fontWeight: isSelected ? '800' : '600',
-                  border: isSelected ? '1px solid rgba(16, 185, 129, 0.6)' : '1px solid var(--border-subtle)',
-                  background: isSelected ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255, 255, 255, 0.03)',
-                  color: isSelected ? '#34d399' : 'var(--text-secondary)',
+                  border: isSelected ? '1px solid var(--color-buy)' : '1px solid var(--border-subtle)',
+                  background: isSelected ? 'var(--color-buy-bg)' : 'var(--bg-card-subtle)',
+                  color: isSelected ? 'var(--color-buy)' : 'var(--text-secondary)',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
@@ -217,17 +226,17 @@ export default function FilterBar({
         {/* Sort By Dropdown */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <ArrowUpDown size={13} color="#818cf8" /> Sort:
+            <ArrowUpDown size={13} color="var(--color-brand)" /> Sort:
           </span>
           <select
             value={sortBy}
             onChange={e => setSortBy && setSortBy(e.target.value)}
             style={{
               padding: '6px 10px',
-              background: 'rgba(2, 6, 23, 0.85)',
-              border: '1px solid rgba(99, 102, 241, 0.4)',
+              background: 'var(--bg-input)',
+              border: '1px solid var(--border-subtle)',
               borderRadius: '8px',
-              color: '#ffffff',
+              color: 'var(--text-primary)',
               fontSize: '0.75rem',
               fontWeight: '700',
               outline: 'none',
@@ -255,9 +264,9 @@ export default function FilterBar({
                   borderRadius: '8px',
                   fontSize: '0.75rem',
                   fontWeight: '600',
-                  border: isSelected ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid var(--border-subtle)',
-                  background: isSelected ? 'rgba(99, 102, 241, 0.25)' : 'rgba(255, 255, 255, 0.03)',
-                  color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                  border: isSelected ? '1px solid var(--color-brand)' : '1px solid var(--border-subtle)',
+                  background: isSelected ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-card-subtle)',
+                  color: isSelected ? 'var(--color-brand)' : 'var(--text-secondary)',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}

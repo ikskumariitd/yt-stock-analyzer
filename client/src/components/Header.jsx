@@ -1,16 +1,19 @@
 import React from 'react';
-import { Activity, Radio, Tv, RefreshCw, Zap, Sparkles } from 'lucide-react';
+import { Activity, Radio, Tv, RefreshCw, Zap, Sparkles, Sun, Moon } from 'lucide-react';
 
-export default function Header({ activeTab, setActiveTab, onOpenScanModal, isScanning }) {
+export default function Header({ activeTab, setActiveTab, onOpenScanModal, isScanning, theme, setTheme }) {
+  const isDark = theme === 'dark';
+
   return (
     <header style={{
       borderBottom: '1px solid var(--border-subtle)',
-      background: 'rgba(7, 9, 14, 0.85)',
+      background: 'var(--header-bg)',
       backdropFilter: 'blur(16px)',
       position: 'sticky',
       top: 0,
       zIndex: 40,
-      padding: '16px 24px'
+      padding: '16px 24px',
+      transition: 'background-color 0.2s ease'
     }}>
       <div style={{
         maxWidth: '1400px',
@@ -31,19 +34,19 @@ export default function Header({ activeTab, setActiveTab, onOpenScanModal, isSca
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 0 20px rgba(99, 102, 241, 0.4)'
+            boxShadow: '0 0 20px rgba(99, 102, 241, 0.3)'
           }}>
             <Activity size={22} color="#ffffff" />
           </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <h1 style={{ fontSize: '1.25rem', fontWeight: '800', letterSpacing: '-0.02em', color: '#ffffff' }}>
+              <h1 style={{ fontSize: '1.25rem', fontWeight: '800', letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
                 AlphaPulse
               </h1>
               <span style={{
-                background: 'rgba(99, 102, 241, 0.2)',
-                color: '#a5b4fc',
-                border: '1px solid rgba(99, 102, 241, 0.4)',
+                background: 'rgba(99, 102, 241, 0.12)',
+                color: 'var(--color-brand)',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
                 fontSize: '0.65rem',
                 fontWeight: '700',
                 padding: '2px 6px',
@@ -64,7 +67,7 @@ export default function Header({ activeTab, setActiveTab, onOpenScanModal, isSca
         {/* Navigation Tabs */}
         <nav style={{
           display: 'flex',
-          background: 'rgba(15, 23, 42, 0.8)',
+          background: 'var(--nav-bg)',
           border: '1px solid var(--border-subtle)',
           padding: '4px',
           borderRadius: '12px',
@@ -110,8 +113,32 @@ export default function Header({ activeTab, setActiveTab, onOpenScanModal, isSca
           </button>
         </nav>
 
-        {/* Action Button */}
+        {/* Action Controls & Theme Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Theme Toggle */}
+          <button
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
+            title={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-secondary)',
+              padding: '8px 12px',
+              borderRadius: '10px',
+              fontSize: '0.8rem',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: 'var(--shadow-card)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            {isDark ? <Sun size={15} color="#f59e0b" /> : <Moon size={15} color="#6366f1" />}
+            <span>{isDark ? 'Light' : 'Dark'}</span>
+          </button>
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             <span className="pulse-dot"></span>
             <span>Live AI Watcher</span>
@@ -131,7 +158,7 @@ export default function Header({ activeTab, setActiveTab, onOpenScanModal, isSca
               fontWeight: '700',
               fontSize: '0.85rem',
               cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.25)',
               transition: 'transform 0.15s ease'
             }}
             onMouseOver={e => e.currentTarget.style.transform = 'translateY(-1px)'}

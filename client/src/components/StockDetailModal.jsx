@@ -23,7 +23,7 @@ export default function StockDetailModal({ recommendation, onClose }) {
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         backdropFilter: 'blur(8px)',
         zIndex: 50,
         display: 'flex',
@@ -41,9 +41,9 @@ export default function StockDetailModal({ recommendation, onClose }) {
           maxHeight: '90vh',
           overflowY: 'auto',
           padding: '32px',
-          background: '#0d1322',
-          border: '1px solid var(--border-glow)',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-subtle)',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           position: 'relative'
         }}
         onClick={e => e.stopPropagation()}
@@ -55,20 +55,20 @@ export default function StockDetailModal({ recommendation, onClose }) {
             position: 'absolute',
             top: '20px',
             right: '20px',
-            background: 'rgba(255, 255, 255, 0.08)',
-            border: 'none',
+            background: 'var(--bg-card-subtle)',
+            border: '1px solid var(--border-subtle)',
             borderRadius: '50%',
             width: '36px',
             height: '36px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#ffffff',
+            color: 'var(--text-secondary)',
             cursor: 'pointer',
             transition: 'background 0.2s'
           }}
-          onMouseOver={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
-          onMouseOut={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+          onMouseOver={e => e.currentTarget.style.background = 'var(--bg-card-hover)'}
+          onMouseOut={e => e.currentTarget.style.background = 'var(--bg-card-subtle)'}
         >
           <X size={20} />
         </button>
@@ -76,7 +76,7 @@ export default function StockDetailModal({ recommendation, onClose }) {
         {/* Header Section */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-            <span className="font-mono" style={{ fontSize: '2rem', fontWeight: '800', color: '#ffffff' }}>
+            <span className="font-mono" style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--color-brand)' }}>
               {r.ticker}
             </span>
 
@@ -87,7 +87,7 @@ export default function StockDetailModal({ recommendation, onClose }) {
               {r.market || 'US'}
             </span>
           </div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: 'var(--text-primary)' }}>
             {r.company_name}
           </h2>
         </div>
@@ -97,7 +97,7 @@ export default function StockDetailModal({ recommendation, onClose }) {
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: '12px',
-          background: 'rgba(2, 6, 23, 0.8)',
+          background: 'var(--bg-card-subtle)',
           border: '1px solid var(--border-subtle)',
           borderRadius: '12px',
           padding: '16px',
@@ -140,8 +140,8 @@ export default function StockDetailModal({ recommendation, onClose }) {
         {/* Video Source Banner */}
         <div style={{
           padding: '12px 16px',
-          background: 'rgba(99, 102, 241, 0.1)',
-          border: '1px solid rgba(99, 102, 241, 0.25)',
+          background: 'rgba(99, 102, 241, 0.08)',
+          border: '1px solid rgba(99, 102, 241, 0.2)',
           borderRadius: '10px',
           display: 'flex',
           alignItems: 'center',
@@ -151,10 +151,10 @@ export default function StockDetailModal({ recommendation, onClose }) {
           marginBottom: '24px'
         }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#a5b4fc', fontWeight: '600' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--color-brand)', fontWeight: '700' }}>
               <User size={14} /> {r.channel_name}
             </div>
-            <p style={{ fontSize: '0.85rem', color: '#ffffff', fontWeight: '500', marginTop: '2px' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-primary)', fontWeight: '600', marginTop: '2px' }}>
               {r.video_title}
             </p>
           </div>
@@ -174,7 +174,7 @@ export default function StockDetailModal({ recommendation, onClose }) {
               textDecoration: 'none',
               fontSize: '0.8rem',
               fontWeight: '700',
-              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.4)'
+              boxShadow: '0 2px 8px rgba(239, 68, 68, 0.25)'
             }}
           >
             <Play size={14} fill="#ffffff" />
@@ -186,13 +186,13 @@ export default function StockDetailModal({ recommendation, onClose }) {
         {/* Direct Quote */}
         {r.quote_excerpt && (
           <div style={{
-            background: 'rgba(255, 255, 255, 0.03)',
+            background: 'var(--bg-card-subtle)',
             borderLeft: '4px solid var(--color-brand)',
             padding: '14px 18px',
             borderRadius: '0 8px 8px 0',
             fontStyle: 'italic',
             fontSize: '0.9rem',
-            color: '#cbd5e1',
+            color: 'var(--text-secondary)',
             lineHeight: '1.5',
             marginBottom: '24px'
           }}>
@@ -203,13 +203,13 @@ export default function StockDetailModal({ recommendation, onClose }) {
         {/* Catalysts & Thesis */}
         {r.thesis && r.thesis.length > 0 && (
           <div style={{ marginBottom: '24px' }}>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <CheckCircle2 size={18} color="#10b981" /> Investment Thesis & Catalysts
+            <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <CheckCircle2 size={18} color="var(--color-buy)" /> Investment Thesis & Catalysts
             </h3>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {r.thesis.map((point, idx) => (
                 <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                  <span style={{ color: '#10b981', fontWeight: 'bold' }}>•</span>
+                  <span style={{ color: 'var(--color-buy)', fontWeight: 'bold' }}>•</span>
                   <span>{point}</span>
                 </li>
               ))}
@@ -220,13 +220,13 @@ export default function StockDetailModal({ recommendation, onClose }) {
         {/* Key Risks */}
         {r.risks && r.risks.length > 0 && (
           <div>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-              <AlertTriangle size={18} color="#f59e0b" /> Highlighted Risks & Caveats
+            <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <AlertTriangle size={18} color="var(--color-watchlist)" /> Highlighted Risks & Caveats
             </h3>
             <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {r.risks.map((risk, idx) => (
-                <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', color: '#fca5a5', lineHeight: '1.4' }}>
-                  <span style={{ color: '#f87171', fontWeight: 'bold' }}>⚠️</span>
+                <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '0.85rem', color: 'var(--color-sell)', lineHeight: '1.4' }}>
+                  <span style={{ color: 'var(--color-sell)', fontWeight: 'bold' }}>⚠️</span>
                   <span>{risk}</span>
                 </li>
               ))}
