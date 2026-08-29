@@ -380,6 +380,26 @@ def sync_live_youtube_subscriptions():
 
 
 
+class SettingsRequest(BaseModel):
+    cooldown_seconds: int
+
+
+@app.get("/api/scan/settings")
+def get_scan_settings():
+    return {
+        "cooldown_seconds": scan_queue.get_cooldown_seconds()
+    }
+
+
+@app.post("/api/scan/settings")
+def update_scan_settings(req: SettingsRequest):
+    scan_queue.set_cooldown_seconds(req.cooldown_seconds)
+    return {
+        "success": True,
+        "cooldown_seconds": scan_queue.get_cooldown_seconds()
+    }
+
+
 @app.get("/api/scan/status")
 async def get_scan_status():
     return scan_queue.get_status()

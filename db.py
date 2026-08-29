@@ -120,6 +120,15 @@ def init_db():
         except sqlite3.OperationalError:
             pass
 
+        # App Settings Table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
         # Performance Indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_ticker ON recommendations(ticker);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_published ON recommendations(published_at);")
@@ -664,6 +673,27 @@ def get_scan_audit_logs(
             "total_stocks_found": total_stocks_found,
             "items": items
         }
+
+
+def get_setting(key: str, default: Optional[str] = None) -> Optional[str]:
+    """Retrieves an application setting value from SQLite."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM app_settings WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        return row[0] if row else default
+
+
+def set_setting(key: str, value: Any):
+    """Sets an application setting value in SQLite."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+        INSERT INTO app_settings (key, value, updated_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=CURRENT_TIMESTAMP
+        """, (key, str(value)))
+        conn.commit()
 
 
 # Initialize DB on load

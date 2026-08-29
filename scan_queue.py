@@ -40,6 +40,17 @@ class SequentialScanQueue:
         self._completed_in_batch: int = 0
         self._worker_task: Optional[asyncio.Task] = None
         self._lock = asyncio.Lock()
+        self._cooldown_seconds: int = int(db.get_setting("scan_cooldown_seconds", "3600"))
+        self._cooldown_end_time: Optional[float] = None
+
+    def get_cooldown_seconds(self) -> int:
+        return self._cooldown_seconds
+
+    def set_cooldown_seconds(self, secs: int):
+        self._cooldown_seconds = max(0, int(secs))
+        db.set_setting("scan_cooldown_seconds", str(self._cooldown_seconds))
+        mins = round(self._cooldown_seconds / 60, 1)
+        self.log(f"⚙️ Scan cooling period updated to {self._cooldown_seconds}s ({mins} min)")
 
     def log(self, message: str):
         timestamp = time.strftime("%H:%M:%S")
@@ -290,11 +301,16 @@ class SequentialScanQueue:
                 self._completed_in_batch += 1
                 self._current_item = None
 
-                # Gentle pacing between videos
+                # Configurable cooling period between queued videos
                 if self._queue:
-                    cooldown = 6
-                    self.log(f"☕ Cooldown {cooldown}s before next video (rate-limit safe pacing)...")
-                    await asyncio.sleep(cooldown)
+                    cd = self._cooldown_seconds
+                    if cd > 0:
+                        cd_mins = round(cd / 60, 1)
+                        self.log(f"☕ Cooling period: Waiting {cd}s ({cd_mins}m) before next video...")
+                        self._cooldown_end_time = time.time() + cd
+                        while time.time() < self._cooldown_end_time and self._queue:
+                            await asyncio.sleep(1)
+                        self._cooldown_end_time = None
 
         except Exception as general_err:
             self.log(f"Worker exception: {general_err}")
@@ -303,6 +319,7 @@ class SequentialScanQueue:
             self._total_batch_size = 0
             self._completed_in_batch = 0
             self._current_item = None
+            self._cooldown_end_time = None
             self.log("🏁 All queued videos processed. Worker idle.")
 
     def get_queued_items(self) -> List[Dict[str, Any]]:
@@ -324,9 +341,14 @@ class SequentialScanQueue:
         total = self._total_batch_size
         done = self._completed_in_batch
         pct = int((done / total * 100)) if total > 0 else 0
+        cd_remaining = int(max(0, self._cooldown_end_time - time.time())) if self._cooldown_end_time else 0
 
         msg = "Idle"
-        if self._is_processing and curr:
+        if cd_remaining > 0 and self._queue:
+            mins_left = cd_remaining // 60
+            secs_left = cd_remaining % 60
+            msg = f"☕ Cooling down ({mins_left}m {secs_left}s remaining before next video)..."
+        elif self._is_processing and curr:
             msg = f"Analyzing video: '{curr.get('title', '')[:50]}...'"
         elif self._is_processing:
             msg = "Processing queue..."
@@ -339,6 +361,8 @@ class SequentialScanQueue:
             "progress_percent": pct,
             "current_item": curr,
             "progress_message": msg,
+            "cooldown_seconds": self._cooldown_seconds,
+            "cooldown_remaining_seconds": cd_remaining,
             "logs": self._logs[-25:]
         }
 

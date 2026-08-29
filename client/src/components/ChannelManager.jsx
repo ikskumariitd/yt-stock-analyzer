@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tv, Plus, Play, Check, ExternalLink, RefreshCw, Radio, Link2, Sparkles, Trash2, Calendar, X } from 'lucide-react';
+import { Tv, Plus, Play, Check, ExternalLink, RefreshCw, Radio, Link2, Sparkles, Trash2, Calendar, X, Clock } from 'lucide-react';
 import {
   addChannel,
   toggleChannel,
@@ -16,17 +16,41 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
   const [newName, setNewName] = useState('');
   const [scanLimit, setScanLimit] = useState(2);
   const [scanAfterDate, setScanAfterDate] = useState('');
+  const [cooldownSeconds, setCooldownSeconds] = useState(3600); // 60 mins default
   const [channelLimits, setChannelLimits] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authStatus, setAuthStatus] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Fetch YouTube OAuth live status
+  // Fetch YouTube OAuth live status and scan settings
   useEffect(() => {
     fetchYoutubeAuthStatus()
       .then(data => setAuthStatus(data))
       .catch(() => setAuthStatus(null));
+
+    fetch('/api/scan/settings')
+      .then(r => r.json())
+      .then(data => {
+        if (data?.cooldown_seconds !== undefined) {
+          setCooldownSeconds(data.cooldown_seconds);
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  const handleCooldownChange = async (newVal) => {
+    const val = Number(newVal);
+    setCooldownSeconds(val);
+    try {
+      await fetch('/api/scan/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cooldown_seconds: val })
+      });
+    } catch (e) {
+      console.error("Failed to update cooldown setting", e);
+    }
+  };
 
   const handleLiveSync = async () => {
     if (!authStatus?.connected) {
@@ -344,8 +368,41 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
             </div>
           </div>
 
-          {/* Depth + Scan Action */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Depth, Cooling Period & Scan Action */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* Cooling Period Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Clock size={13} color="var(--color-brand)" /> Cooldown:
+              </span>
+              <select
+                value={cooldownSeconds}
+                onChange={e => handleCooldownChange(e.target.value)}
+                title="Cooling period between each scanned video to prevent rate limits"
+                style={{
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                  padding: '7px 10px',
+                  borderRadius: '6px',
+                  fontSize: '0.8rem',
+                  fontWeight: '700',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                <option value={10}>10s (Fast)</option>
+                <option value={30}>30s (Gentle)</option>
+                <option value={60}>1 Min</option>
+                <option value={300}>5 Mins</option>
+                <option value={900}>15 Mins</option>
+                <option value={1800}>30 Mins</option>
+                <option value={3600}>60 Mins (1 Hour)</option>
+                <option value={7200}>2 Hours</option>
+              </select>
+            </div>
+
+            {/* Depth Selector */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Depth:</span>
               <select
