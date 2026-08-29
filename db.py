@@ -146,8 +146,15 @@ def get_channels() -> List[Dict[str, Any]]:
         cursor.execute("""
         SELECT 
             c.*,
-            (SELECT COUNT(*) FROM videos v WHERE (v.channel_id IS NOT NULL AND v.channel_id != '' AND v.channel_id = c.channel_id) OR TRIM(v.channel_name) = TRIM(c.name)) as analyzed_videos_count,
-            (SELECT COUNT(*) FROM recommendations r WHERE TRIM(r.channel_name) = TRIM(c.name)) as stock_picks_count
+            (SELECT COUNT(*) FROM videos v WHERE 
+                (v.channel_id IS NOT NULL AND v.channel_id != '' AND v.channel_id = c.channel_id) 
+                OR TRIM(REPLACE(v.channel_name, '@', '')) = TRIM(REPLACE(c.name, '@', ''))
+                OR TRIM(v.channel_name) = TRIM(c.handle)
+            ) as analyzed_videos_count,
+            (SELECT COUNT(*) FROM recommendations r WHERE 
+                TRIM(REPLACE(r.channel_name, '@', '')) = TRIM(REPLACE(c.name, '@', ''))
+                OR TRIM(r.channel_name) = TRIM(c.handle)
+            ) as stock_picks_count
         FROM channels c
         ORDER BY c.name ASC
         """)

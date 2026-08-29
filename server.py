@@ -417,13 +417,15 @@ async def trigger_scan(req: ScanRequest):
                     video_id=r["video_id"],
                     channel_name=r.get("author", target),
                     title=r.get("title", ""),
+                    published_at=r.get("published_at", ""),
                     platform="instagram",
-                    raw_url=r.get("url", "")
+                    raw_url=r.get("url", ""),
+                    caption=r.get("caption", "")
                 ):
                     added += 1
             await asyncio.to_thread(db.update_channel_scan_time, target)
             scan_queue.trigger_worker()
-            return {"success": True, "message": f"Enqueued {added} Instagram Reels from {target}."}
+            return {"success": True, "message": f"Enqueued {added} Instagram Reels/Posts from {target}."}
 
     # 2. YouTube Single Video
     video_id = extract_video_id(target)
@@ -476,8 +478,10 @@ async def trigger_scan_all(limit: int = 2, after_date: Optional[str] = None):
                     video_id=r["video_id"],
                     channel_name=ch.get("name", r.get("author", url)),
                     title=r.get("title", ""),
+                    published_at=r.get("published_at", ""),
                     platform="instagram",
-                    raw_url=r.get("url", "")
+                    raw_url=r.get("url", ""),
+                    caption=r.get("caption", "")
                 ):
                     total_added += 1
             await asyncio.to_thread(db.update_channel_scan_time, url)

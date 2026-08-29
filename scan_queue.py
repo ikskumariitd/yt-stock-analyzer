@@ -23,6 +23,7 @@ class QueueItem:
     published_at: str = ""
     platform: str = "youtube"  # 'youtube' | 'instagram'
     raw_url: str = ""
+    caption: str = ""
     status: str = "pending"  # pending, processing, completed, skipped, failed
     error: Optional[str] = None
     enqueued_at: float = field(default_factory=time.time)
@@ -46,7 +47,10 @@ class SequentialScanQueue:
         self._logs.append(log_line)
         if len(self._logs) > 60:
             self._logs.pop(0)
-        print(log_line)
+        try:
+            print(log_line)
+        except Exception:
+            pass
 
     def enqueue_video(
         self,
@@ -56,7 +60,8 @@ class SequentialScanQueue:
         title: str = "",
         published_at: str = "",
         platform: str = "youtube",
-        raw_url: str = ""
+        raw_url: str = "",
+        caption: str = ""
     ) -> bool:
         """Enqueue a single video/reel if not already queued."""
         if any(item.video_id == video_id for item in self._queue):
@@ -71,7 +76,8 @@ class SequentialScanQueue:
             title=title or f"{platform.title()} Video {video_id}",
             published_at=published_at,
             platform=platform,
-            raw_url=raw_url
+            raw_url=raw_url,
+            caption=caption
         )
         self._queue.append(item)
         self._total_batch_size += 1
@@ -129,14 +135,16 @@ class SequentialScanQueue:
                     if item.platform == "instagram":
                         # Instagram Reel / Post extraction
                         target_url = item.raw_url or f"https://www.instagram.com/reel/{item.video_id.replace('ig_', '')}/"
-                        ig_data = await asyncio.to_thread(extract_instagram_post_metadata_and_audio, target_url)
+                        ig_data = await asyncio.to_thread(extract_instagram_post_metadata_and_audio, target_url, item.caption)
                         if not ig_data.get("success"):
                             raise RuntimeError(ig_data.get("error", "Instagram extraction failed"))
 
                         ch_name = item.channel_name or ig_data.get("author", "Instagram Creator")
                         item.title = ig_data.get("title", item.title)
+                        if item.caption:
+                            ig_data["caption"] = item.caption
 
-                        self.log(f"🧠 Extracting stock calls with Gemini Multimodal for Instagram Reel '{item.title}'...")
+                        self.log(f"🧠 Extracting stock calls with Gemini for Instagram Post/Reel '{item.title}'...")
                         summary = await asyncio.to_thread(analyze_instagram_media_with_gemini, ig_data)
                         if not summary:
                             raise RuntimeError("Gemini extraction returned empty result")
