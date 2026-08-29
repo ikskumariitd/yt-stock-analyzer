@@ -17,7 +17,7 @@ def get_connection():
 
 
 def init_db():
-    """Initialize database tables with indexes."""
+    """Initialize database tables with indexes and safe migrations."""
     with get_connection() as conn:
         cursor = conn.cursor()
         
@@ -29,6 +29,7 @@ def init_db():
             name TEXT NOT NULL,
             handle TEXT,
             url TEXT NOT NULL UNIQUE,
+            platform TEXT DEFAULT 'youtube',
             enabled BOOLEAN DEFAULT 1,
             last_scanned_at TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -44,6 +45,7 @@ def init_db():
             title TEXT NOT NULL,
             published_at TEXT,
             video_url TEXT,
+            platform TEXT DEFAULT 'youtube',
             market_outlook TEXT,
             summary_text TEXT,
             macro_takeaways TEXT, -- JSON array
@@ -59,6 +61,7 @@ def init_db():
             video_title TEXT,
             video_url TEXT,
             channel_name TEXT,
+            platform TEXT DEFAULT 'youtube',
             published_at TEXT,
             ticker TEXT NOT NULL,
             company_name TEXT,
@@ -79,6 +82,20 @@ def init_db():
         )
         """)
 
+        # Migrations: Add platform column if missing on older DB schemas
+        try:
+            cursor.execute("ALTER TABLE channels ADD COLUMN platform TEXT DEFAULT 'youtube';")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE videos ADD COLUMN platform TEXT DEFAULT 'youtube';")
+        except sqlite3.OperationalError:
+            pass
+        try:
+            cursor.execute("ALTER TABLE recommendations ADD COLUMN platform TEXT DEFAULT 'youtube';")
+        except sqlite3.OperationalError:
+            pass
+
         # Performance Indexes
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_ticker ON recommendations(ticker);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_recs_published ON recommendations(published_at);")
@@ -89,7 +106,8 @@ def init_db():
         conn.commit()
 
 
-def upsert_channel(name: str, url: str, handle: Optional[str] = None, channel_id: Optional[str] = None, enabled: bool = True):
+
+def upsert_channel(name: str, url: str, handle: Optional[str] = None, channel_id: Optional[str] = None, enabled: bool = True, platform: str = "youtube"):
     with get_connection() as conn:
         cursor = conn.cursor()
         
@@ -109,14 +127,15 @@ def upsert_channel(name: str, url: str, handle: Optional[str] = None, channel_id
                 url = COALESCE(?, url),
                 handle = COALESCE(?, handle),
                 channel_id = COALESCE(?, channel_id),
+                platform = COALESCE(?, platform),
                 enabled = ?
             WHERE id = ?
-            """, (name, url, handle, channel_id, 1 if enabled else 0, existing[0]))
+            """, (name, url, handle, channel_id, platform, 1 if enabled else 0, existing[0]))
         else:
             cursor.execute("""
-            INSERT INTO channels (name, url, handle, channel_id, enabled)
-            VALUES (?, ?, ?, ?, ?)
-            """, (name, url, handle, channel_id, 1 if enabled else 0))
+            INSERT INTO channels (name, url, handle, channel_id, platform, enabled)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """, (name, url, handle, channel_id, platform, 1 if enabled else 0))
         conn.commit()
 
 
@@ -173,7 +192,8 @@ def save_video_analysis(
     market_outlook: str,
     summary_text: str,
     macro_takeaways: List[str],
-    recommendations: List[Any]
+    recommendations: List[Any],
+    platform: str = "youtube"
 ):
     with get_connection() as conn:
         cursor = conn.cursor()
@@ -182,8 +202,8 @@ def save_video_analysis(
         cursor.execute("""
         INSERT OR REPLACE INTO videos (
             video_id, channel_id, channel_name, title, published_at,
-            video_url, market_outlook, summary_text, macro_takeaways, processed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            video_url, platform, market_outlook, summary_text, macro_takeaways, processed_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         """, (
             video_id,
             channel_id,
@@ -191,6 +211,7 @@ def save_video_analysis(
             title,
             published_at,
             video_url,
+            platform,
             market_outlook,
             summary_text,
             json.dumps(macro_takeaways or [])
@@ -204,16 +225,17 @@ def save_video_analysis(
             r = rec.model_dump() if hasattr(rec, "model_dump") else (rec if isinstance(rec, dict) else dict(rec))
             cursor.execute("""
             INSERT INTO recommendations (
-                video_id, video_title, video_url, channel_name, published_at,
+                video_id, video_title, video_url, channel_name, platform, published_at,
                 ticker, company_name, market, sentiment, strategy_type,
                 current_price, buy_entry_zone, target_price, stop_loss,
                 time_horizon, thesis, risks, quote_excerpt, timestamp_reference
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 video_id,
                 title,
                 video_url,
                 channel_name,
+                platform,
                 published_at,
                 r.get("ticker", "").upper(),
                 r.get("company_name", ""),
@@ -232,6 +254,7 @@ def save_video_analysis(
             ))
 
         conn.commit()
+
 
 
 def query_recommendations(
@@ -380,6 +403,7 @@ def query_consensus(
 
         # Dominant stance
         dominant_sentiment = max(sentiment_counts.items(), key=lambda x: x[1])[0]
+        platforms = list(set(r.get("platform", "youtube") for r in data["calls"]))
 
         results.append({
             "ticker": ticker,
@@ -388,6 +412,7 @@ def query_consensus(
             "total_calls": total_calls,
             "unique_creators": unique_creators,
             "creator_names": list(data["channels"]),
+            "platforms": platforms,
             "latest_date": data["latest_date"],
             "dominant_sentiment": dominant_sentiment,
             "sentiment_counts": sentiment_counts,

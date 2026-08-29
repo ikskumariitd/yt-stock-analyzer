@@ -328,21 +328,34 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                               width: '32px',
                               height: '32px',
                               borderRadius: '8px',
-                              background: 'rgba(99, 102, 241, 0.12)',
-                              color: 'var(--color-brand)',
+                              background: call.platform === 'instagram' ? 'rgba(236, 72, 153, 0.15)' : 'rgba(99, 102, 241, 0.12)',
+                              color: call.platform === 'instagram' ? '#ec4899' : 'var(--color-brand)',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: '0.85rem',
                               fontWeight: '900'
                             }}>
-                              {call.channel_name ? call.channel_name[0].toUpperCase() : 'Y'}
+                              {call.platform === 'instagram' ? '📷' : (call.channel_name ? call.channel_name[0].toUpperCase() : 'Y')}
                             </div>
                             <div>
-                              <span style={{ fontWeight: '800', fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                                {call.channel_name}
-                              </span>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontWeight: '800', fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                                  {call.channel_name}
+                                </span>
+                                <span style={{
+                                  fontSize: '0.68rem',
+                                  fontWeight: '700',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  background: call.platform === 'instagram' ? 'rgba(236, 72, 153, 0.15)' : 'rgba(239, 68, 68, 0.12)',
+                                  color: call.platform === 'instagram' ? '#ec4899' : '#ef4444',
+                                  border: call.platform === 'instagram' ? '1px solid rgba(236, 72, 153, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
+                                }}>
+                                  {call.platform === 'instagram' ? 'Instagram' : 'YouTube'}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                 📅 Covered on {formattedDate}
                               </span>
                             </div>

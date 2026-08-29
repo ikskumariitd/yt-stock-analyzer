@@ -8,7 +8,8 @@ from dataclasses import dataclass, field, asdict
 
 import db
 from transcript_extractor import get_video_transcript
-from analyzer import analyze_transcript_with_gemini
+from instagram_extractor import extract_instagram_post_metadata_and_audio
+from analyzer import analyze_transcript_with_gemini, analyze_instagram_media_with_gemini
 
 logger = logging.getLogger("scan_queue")
 
@@ -20,6 +21,8 @@ class QueueItem:
     channel_name: str = ""
     title: str = ""
     published_at: str = ""
+    platform: str = "youtube"  # 'youtube' | 'instagram'
+    raw_url: str = ""
     status: str = "pending"  # pending, processing, completed, skipped, failed
     error: Optional[str] = None
     enqueued_at: float = field(default_factory=time.time)
@@ -45,8 +48,17 @@ class SequentialScanQueue:
             self._logs.pop(0)
         print(log_line)
 
-    def enqueue_video(self, video_id: str, channel_id: str = "", channel_name: str = "", title: str = "", published_at: str = "") -> bool:
-        """Enqueue a single video if not already queued."""
+    def enqueue_video(
+        self,
+        video_id: str,
+        channel_id: str = "",
+        channel_name: str = "",
+        title: str = "",
+        published_at: str = "",
+        platform: str = "youtube",
+        raw_url: str = ""
+    ) -> bool:
+        """Enqueue a single video/reel if not already queued."""
         if any(item.video_id == video_id for item in self._queue):
             return False
         if self._current_item and self._current_item.video_id == video_id:
@@ -56,15 +68,17 @@ class SequentialScanQueue:
             video_id=video_id,
             channel_id=channel_id,
             channel_name=channel_name,
-            title=title or f"Video {video_id}",
-            published_at=published_at
+            title=title or f"{platform.title()} Video {video_id}",
+            published_at=published_at,
+            platform=platform,
+            raw_url=raw_url
         )
         self._queue.append(item)
         self._total_batch_size += 1
-        self.log(f"📥 Enqueued: {item.title} ({video_id})")
+        platform_icon = "📷" if platform == "instagram" else "🎬"
+        self.log(f"📥 Enqueued {platform_icon}: {item.title} ({video_id})")
         self.trigger_worker()
         return True
-
 
     def clear_queue(self):
         """Clear pending queue items and reset batch counts."""
@@ -111,24 +125,54 @@ class SequentialScanQueue:
 
                 self.log(f"⏳ Processing [{self._completed_in_batch + 1}/{self._total_batch_size}]: '{item.title}'...")
 
-                # 2. Fetch Transcript
                 try:
-                    t_data = await asyncio.to_thread(get_video_transcript, item.video_id)
-                    if not t_data.get("success"):
-                        item.status = "failed"
-                        item.error = t_data.get("error", "No transcript available")
-                        self.log(f"⚠️ Transcript unavailable for '{item.title}': {item.error}")
+                    if item.platform == "instagram":
+                        # Instagram Reel / Post extraction
+                        target_url = item.raw_url or f"https://www.instagram.com/reel/{item.video_id.replace('ig_', '')}/"
+                        ig_data = await asyncio.to_thread(extract_instagram_post_metadata_and_audio, target_url)
+                        if not ig_data.get("success"):
+                            raise RuntimeError(ig_data.get("error", "Instagram extraction failed"))
+
+                        ch_name = item.channel_name or ig_data.get("author", "Instagram Creator")
+                        item.title = ig_data.get("title", item.title)
+
+                        self.log(f"🧠 Extracting stock calls with Gemini Multimodal for Instagram Reel '{item.title}'...")
+                        summary = await asyncio.to_thread(analyze_instagram_media_with_gemini, ig_data)
+                        if not summary:
+                            raise RuntimeError("Gemini extraction returned empty result")
+
+                        await asyncio.to_thread(
+                            db.save_video_analysis,
+                            video_id=item.video_id,
+                            channel_id=item.channel_id or ig_data.get("author", ""),
+                            channel_name=ch_name,
+                            title=item.title,
+                            published_at=item.published_at or ig_data.get("published_at", ""),
+                            video_url=ig_data.get("url") or target_url,
+                            market_outlook=summary.market_outlook,
+                            summary_text=summary.creator_summary,
+                            macro_takeaways=summary.macro_key_takeaways,
+                            recommendations=summary.recommendations,
+                            platform="instagram"
+                        )
+
                     else:
+                        # YouTube Video extraction
+                        t_data = await asyncio.to_thread(get_video_transcript, item.video_id)
+                        if not t_data.get("success"):
+                            item.status = "failed"
+                            item.error = t_data.get("error", "No transcript available")
+                            self.log(f"⚠️ Transcript unavailable for '{item.title}': {item.error}")
+                            continue
+
                         ch_name = item.channel_name or t_data.get("author", "YouTube Creator")
                         item.title = t_data.get("title", item.title)
 
-                        # 3. Gemini Extraction
                         self.log(f"🧠 Extracting stock calls with Gemini for '{item.title}'...")
                         summary = await asyncio.to_thread(analyze_transcript_with_gemini, t_data)
                         if not summary:
                             raise RuntimeError("Gemini extraction returned empty result")
 
-                        # 4. Save to SQLite
                         await asyncio.to_thread(
                             db.save_video_analysis,
                             video_id=item.video_id,
@@ -140,11 +184,12 @@ class SequentialScanQueue:
                             market_outlook=summary.market_outlook,
                             summary_text=summary.creator_summary,
                             macro_takeaways=summary.macro_key_takeaways,
-                            recommendations=summary.recommendations
+                            recommendations=summary.recommendations,
+                            platform="youtube"
                         )
 
-                        item.status = "completed"
-                        self.log(f"✓ Extracted and saved {len(summary.recommendations)} stock calls from '{item.title}'!")
+                    item.status = "completed"
+                    self.log(f"✓ Extracted and saved {len(summary.recommendations)} stock calls from '{item.title}'!")
 
                 except Exception as e:
                     item.status = "failed"
@@ -155,7 +200,7 @@ class SequentialScanQueue:
                 self._completed_in_batch += 1
                 self._current_item = None
 
-                # 5. Free-Tier 3s Cooldown between videos
+                # Free-Tier 3s Cooldown between videos
                 if self._queue:
                     self.log("☕ Cooldown 3s before next video (Free Tier safe)...")
                     await asyncio.sleep(3)
@@ -170,22 +215,29 @@ class SequentialScanQueue:
             self.log("🏁 All queued videos processed. Worker idle.")
 
     def get_status(self) -> Dict[str, Any]:
-        """Return comprehensive status for frontend UI."""
+        """Returns the current queue status for polling."""
+        curr = asdict(self._current_item) if self._current_item else None
         total = self._total_batch_size
-        completed = self._completed_in_batch
-        percent = (completed / total * 100) if total > 0 else 0.0
+        done = self._completed_in_batch
+        pct = int((done / total * 100)) if total > 0 else 0
+
+        msg = "Idle"
+        if self._is_processing and curr:
+            msg = f"Analyzing video: '{curr.get('title', '')[:50]}...'"
+        elif self._is_processing:
+            msg = "Processing queue..."
 
         return {
-            "is_scanning": self._is_processing or len(self._queue) > 0,
-            "current_item": asdict(self._current_item) if self._current_item else None,
-            "pending_count": len(self._queue),
-            "completed_count": completed,
+            "is_scanning": self._is_processing,
+            "queue_length": len(self._queue),
             "total_in_batch": total,
-            "progress_percent": round(percent, 1),
-            "queue_items": [asdict(item) for item in self._queue[:10]],
+            "completed_count": done,
+            "progress_percent": pct,
+            "current_item": curr,
+            "progress_message": msg,
             "logs": self._logs[-25:]
         }
 
 
-# Global singleton queue
+# Global singleton instance
 scan_queue = SequentialScanQueue()

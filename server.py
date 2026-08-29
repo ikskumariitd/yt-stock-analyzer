@@ -236,9 +236,32 @@ def get_channels():
     return db.get_channels()
 
 
+from instagram_extractor import is_instagram_url, normalize_instagram_url, get_creator_recent_reels
+
 @app.post("/api/channels")
-def add_new_channel(req: AddChannelRequest):
+async def add_channel(req: AddChannelRequest):
     handle_or_url = req.url_or_handle.strip()
+    
+    # Check if Instagram creator
+    if is_instagram_url(handle_or_url):
+        clean_url = normalize_instagram_url(handle_or_url)
+        username = clean_url.split("/")[-2]
+        db.upsert_channel(
+            name=req.name or f"@{username}",
+            url=clean_url,
+            handle=f"@{username}",
+            channel_id=f"ig_{username}",
+            platform="instagram",
+            enabled=True
+        )
+        return {
+            "success": True,
+            "message": f"Added Instagram creator: {req.name or '@' + username}",
+            "url": clean_url,
+            "platform": "instagram"
+        }
+
+    # YouTube Creator
     target_url = handle_or_url
     if not target_url.startswith("http"):
         if target_url.startswith("@"):
@@ -246,15 +269,16 @@ def add_new_channel(req: AddChannelRequest):
         else:
             target_url = f"https://www.youtube.com/@{target_url}"
 
-    ch_id = get_channel_id_from_url(target_url)
+    ch_id = await asyncio.to_thread(get_channel_id_from_url, target_url)
     db.upsert_channel(
         name=req.name or handle_or_url,
         url=target_url,
         handle=handle_or_url if "@" in handle_or_url else None,
         channel_id=ch_id,
+        platform="youtube",
         enabled=True
     )
-    return {"success": True, "message": f"Added channel: {req.name or handle_or_url}", "url": target_url}
+    return {"success": True, "message": f"Added YouTube channel: {req.name or handle_or_url}", "url": target_url, "platform": "youtube"}
 
 
 @app.post("/api/channels/{channel_id}/toggle")
@@ -369,36 +393,70 @@ async def clear_scan_queue():
 @app.post("/api/scan")
 async def trigger_scan(req: ScanRequest):
     target = req.target.strip()
-    video_id = extract_video_id(target)
     
+    # 1. Instagram Reel / Post URL
+    if is_instagram_url(target):
+        if "/reel/" in target or "/p/" in target or "/reels/" in target:
+            clean_url = normalize_instagram_url(target)
+            post_id = clean_url.split("/")[-2]
+            video_id = f"ig_{post_id}"
+            scan_queue.enqueue_video(
+                video_id=video_id,
+                title=f"Instagram Reel {post_id}",
+                platform="instagram",
+                raw_url=clean_url
+            )
+            scan_queue.trigger_worker()
+            return {"success": True, "message": f"Enqueued Instagram Reel for extraction: {post_id}"}
+        else:
+            # Instagram Creator Profile
+            reels = await asyncio.to_thread(get_creator_recent_reels, target, limit=req.limit)
+            added = 0
+            for r in reels:
+                if scan_queue.enqueue_video(
+                    video_id=r["video_id"],
+                    channel_name=r.get("author", target),
+                    title=r.get("title", ""),
+                    platform="instagram",
+                    raw_url=r.get("url", "")
+                ):
+                    added += 1
+            await asyncio.to_thread(db.update_channel_scan_time, target)
+            scan_queue.trigger_worker()
+            return {"success": True, "message": f"Enqueued {added} Instagram Reels from {target}."}
+
+    # 2. YouTube Single Video
+    video_id = extract_video_id(target)
     if video_id:
-        scan_queue.enqueue_video(video_id=video_id, title=f"Video {video_id}")
+        scan_queue.enqueue_video(video_id=video_id, title=f"Video {video_id}", platform="youtube")
         scan_queue.trigger_worker()
-        return {"success": True, "message": f"Enqueued video for sequential scan: {video_id}"}
-    else:
-        ch_id = await asyncio.to_thread(get_channel_id_from_url, target)
-        if not ch_id:
-            raise HTTPException(status_code=400, detail=f"Could not resolve channel: {target}")
-        
-        videos = await asyncio.to_thread(
-            get_latest_videos_from_rss,
+        return {"success": True, "message": f"Enqueued YouTube video for sequential scan: {video_id}"}
+    
+    # 3. YouTube Channel
+    ch_id = await asyncio.to_thread(get_channel_id_from_url, target)
+    if not ch_id:
+        raise HTTPException(status_code=400, detail=f"Could not resolve channel: {target}")
+    
+    videos = await asyncio.to_thread(
+        get_latest_videos_from_rss,
+        channel_id=ch_id,
+        limit=req.limit,
+        after_date=req.after_date
+    )
+    added = 0
+    for v in videos:
+        if scan_queue.enqueue_video(
+            video_id=v["video_id"],
             channel_id=ch_id,
-            limit=req.limit,
-            after_date=req.after_date
-        )
-        added = 0
-        for v in videos:
-            if scan_queue.enqueue_video(
-                video_id=v["video_id"],
-                channel_id=ch_id,
-                channel_name=v.get("channel_name", target),
-                title=v.get("title", ""),
-                published_at=v.get("published", "")
-            ):
-                added += 1
-        await asyncio.to_thread(db.update_channel_scan_time, target)
-        scan_queue.trigger_worker()
-        return {"success": True, "message": f"Enqueued {added} recent videos from {target} (1-by-1 mode)."}
+            channel_name=v.get("channel_name", target),
+            title=v.get("title", ""),
+            published_at=v.get("published", ""),
+            platform="youtube"
+        ):
+            added += 1
+    await asyncio.to_thread(db.update_channel_scan_time, target)
+    scan_queue.trigger_worker()
+    return {"success": True, "message": f"Enqueued {added} recent videos from {target} (1-by-1 mode)."}
 
 
 @app.post("/api/scan-all")
@@ -409,31 +467,47 @@ async def trigger_scan_all(limit: int = 2, after_date: Optional[str] = None):
 
     for ch in enabled_channels:
         url = ch.get("url") or ch.get("handle")
-        ch_id = ch.get("channel_id") or await asyncio.to_thread(get_channel_id_from_url, url)
-        if ch_id:
-            videos = await asyncio.to_thread(
-                get_latest_videos_from_rss,
-                channel_id=ch_id,
-                limit=limit,
-                after_date=after_date
-            )
-            for v in videos:
+        platform = ch.get("platform", "youtube")
+
+        if platform == "instagram" or is_instagram_url(url):
+            reels = await asyncio.to_thread(get_creator_recent_reels, url, limit=limit)
+            for r in reels:
                 if scan_queue.enqueue_video(
-                    video_id=v["video_id"],
-                    channel_id=ch_id,
-                    channel_name=ch.get("name", v.get("channel_name")),
-                    title=v.get("title", ""),
-                    published_at=v.get("published", "")
+                    video_id=r["video_id"],
+                    channel_name=ch.get("name", r.get("author", url)),
+                    title=r.get("title", ""),
+                    platform="instagram",
+                    raw_url=r.get("url", "")
                 ):
                     total_added += 1
             await asyncio.to_thread(db.update_channel_scan_time, url)
+        else:
+            ch_id = ch.get("channel_id") or await asyncio.to_thread(get_channel_id_from_url, url)
+            if ch_id:
+                videos = await asyncio.to_thread(
+                    get_latest_videos_from_rss,
+                    channel_id=ch_id,
+                    limit=limit,
+                    after_date=after_date
+                )
+                for v in videos:
+                    if scan_queue.enqueue_video(
+                        video_id=v["video_id"],
+                        channel_id=ch_id,
+                        channel_name=ch.get("name", v.get("channel_name")),
+                        title=v.get("title", ""),
+                        published_at=v.get("published", ""),
+                        platform="youtube"
+                    ):
+                        total_added += 1
+                await asyncio.to_thread(db.update_channel_scan_time, url)
 
     scan_queue.trigger_worker()
 
     date_msg = f" published after {after_date}" if after_date else ""
     return {
         "success": True,
-        "message": f"Enqueued {total_added} videos{date_msg} across {len(enabled_channels)} channels for sequential processing (1-at-a-time)."
+        "message": f"Enqueued {total_added} videos/reels{date_msg} across {len(enabled_channels)} creators for sequential processing."
     }
 
 

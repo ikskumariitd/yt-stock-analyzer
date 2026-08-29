@@ -352,12 +352,12 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
       {/* Add Channel Form */}
       <div className="glass-panel" style={{ padding: '20px', marginBottom: '24px' }}>
         <h3 style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '12px' }}>
-          + Add New YouTube Creator
+          + Add New Creator (YouTube or Instagram)
         </h3>
         <form onSubmit={handleAdd} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
           <input
             type="text"
-            placeholder="Channel Handle (@MeetKevin) or Full URL"
+            placeholder="YouTube (@MeetKevin) or Instagram (@creator / instagram.com/creator)"
             value={newHandle}
             onChange={e => setNewHandle(e.target.value)}
             required
@@ -412,7 +412,9 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
 
       {/* Channels List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {(channels || []).map(ch => (
+        {(channels || []).map(ch => {
+          const isInstagram = ch.platform === 'instagram' || (ch.url && ch.url.includes('instagram.com'));
+          return (
           <div
             key={ch.id || ch.url}
             className="glass-panel"
@@ -430,21 +432,36 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 width: '44px',
                 height: '44px',
                 borderRadius: '12px',
-                background: ch.enabled ? 'var(--color-buy-bg)' : 'var(--bg-card-subtle)',
-                color: ch.enabled ? 'var(--color-buy)' : 'var(--text-muted)',
+                background: ch.enabled 
+                  ? (isInstagram ? 'rgba(236, 72, 153, 0.15)' : 'var(--color-buy-bg)')
+                  : 'var(--bg-card-subtle)',
+                color: ch.enabled 
+                  ? (isInstagram ? '#ec4899' : 'var(--color-buy)')
+                  : 'var(--text-muted)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: '900',
                 fontSize: '1.1rem'
               }}>
-                {ch.name ? ch.name[0].toUpperCase() : 'Y'}
+                {isInstagram ? '📷' : (ch.name ? ch.name[0].toUpperCase() : 'Y')}
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <h4 style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>
                     {ch.name}
                   </h4>
+                  <span style={{
+                    fontSize: '0.7rem',
+                    fontWeight: '700',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    background: isInstagram ? 'rgba(236, 72, 153, 0.15)' : 'rgba(239, 68, 68, 0.12)',
+                    color: isInstagram ? '#ec4899' : '#ef4444',
+                    border: isInstagram ? '1px solid rgba(236, 72, 153, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'
+                  }}>
+                    {isInstagram ? 'Instagram' : 'YouTube'}
+                  </span>
                   <a
                     href={ch.url}
                     target="_blank"
@@ -592,7 +609,8 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               </button>
             </div>
           </div>
-        ))}
+        );
+        })}
       </div>
     </div>
   );

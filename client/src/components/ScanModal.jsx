@@ -68,20 +68,20 @@ export default function ScanModal({ isOpen, onClose, onScanTriggered, scanStatus
         </button>
 
         <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '8px' }}>
-          ⚡ Scan YouTube Video or Channel
+          ⚡ Scan YouTube Video or Instagram Reel
         </h3>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-          Paste any YouTube financial video URL or channel handle. Gemini 3.7 will extract stock tickers, buy levels, and targets.
+          Paste any financial YouTube video URL or Instagram Reel link. Gemini 3.7 will extract stock tickers, sentiment, entry zones, and price targets.
         </p>
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '6px' }}>
-              YouTube URL or Channel Handle
+              YouTube URL / Channel or Instagram Reel Link
             </label>
             <input
               type="text"
-              placeholder="e.g. https://www.youtube.com/watch?v=... or @MeetKevin"
+              placeholder="e.g. instagram.com/reel/DF9... or youtube.com/watch?v=... or @MeetKevin"
               value={target}
               onChange={e => setTarget(e.target.value)}
               required
