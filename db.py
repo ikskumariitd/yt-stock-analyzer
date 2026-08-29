@@ -123,6 +123,14 @@ def get_channels() -> List[Dict[str, Any]]:
         return [dict(row) for row in cursor.fetchall()]
 
 
+def delete_channel(channel_id: int):
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM channels WHERE id = ?", (channel_id,))
+        conn.commit()
+
+
+
 def update_channel_scan_time(url_or_id: str):
     with get_connection() as conn:
         cursor = conn.cursor()

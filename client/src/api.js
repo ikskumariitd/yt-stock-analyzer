@@ -43,6 +43,15 @@ export async function toggleChannel(channelId) {
   return res.json();
 }
 
+export async function deleteChannel(channelId) {
+  const res = await fetch(`${API_BASE}/channels/${channelId}`, {
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error('Failed to delete channel');
+  return res.json();
+}
+
+
 export async function triggerScan(target, limit = 2) {
   const res = await fetch(`${API_BASE}/scan`, {
     method: 'POST',

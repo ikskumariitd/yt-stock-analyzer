@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Tv, Plus, Play, Check, ExternalLink, RefreshCw, Radio, Link2, Sparkles } from 'lucide-react';
+import { Tv, Plus, Play, Check, ExternalLink, RefreshCw, Radio, Link2, Sparkles, Trash2 } from 'lucide-react';
 import {
   addChannel,
   toggleChannel,
+  deleteChannel,
   triggerScan,
   triggerScanAll,
   fetchYoutubeAuthStatus,
   syncLiveYoutubeSubscriptions
 } from '../api';
+
 
 export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, isScanning }) {
   const [newHandle, setNewHandle] = useState('');
@@ -63,6 +65,16 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
   const handleToggle = async (id) => {
     try {
       await toggleChannel(id);
+      onRefresh();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to remove "${name}" from monitored channels?`)) return;
+    try {
+      await deleteChannel(id);
       onRefresh();
     } catch (err) {
       alert(err.message);
@@ -322,11 +334,29 @@ export default function ChannelManager({ channels, onRefresh, onTriggerScanAll, 
                   padding: '6px 12px',
                   borderRadius: '6px',
                   fontSize: '0.75rem',
-                  fontWeight: '700',
+                  fontWeight: '800',
                   cursor: 'pointer'
                 }}
               >
                 {ch.enabled ? 'ENABLED' : 'DISABLED'}
+              </button>
+
+              <button
+                onClick={() => handleDelete(ch.id, ch.name)}
+                title="Remove Channel"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                  color: '#f87171',
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Trash2 size={14} />
               </button>
             </div>
           </div>

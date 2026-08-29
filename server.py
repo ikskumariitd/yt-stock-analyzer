@@ -230,6 +230,13 @@ def toggle_channel(channel_id: int):
     return {"success": True}
 
 
+@app.delete("/api/channels/{channel_id}")
+def remove_channel(channel_id: int):
+    db.delete_channel(channel_id)
+    return {"success": True, "message": "Channel removed successfully."}
+
+
+
 @app.get("/api/auth/youtube/status")
 def get_youtube_auth_status():
     creds = youtube_oauth.load_saved_credentials()
