@@ -31,7 +31,10 @@ import {
   triggerScanAll,
   fetchYoutubeAuthStatus,
   syncLiveYoutubeSubscriptions,
-  fetchChannelVideos
+  fetchChannelVideos,
+  fetchSchedulerStatus,
+  updateSchedulerConfig,
+  triggerSchedulerRunNow
 } from '../api';
 import { formatSingaporeDateTime, formatSingaporeDate } from '../utils/timeUtils';
 
@@ -44,6 +47,10 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
   const [expandedChannelId, setExpandedChannelId] = useState(null);
   const [channelVideos, setChannelVideos] = useState({});
   const [loadingVideos, setLoadingVideos] = useState({});
+  const [schedulerStatus, setSchedulerStatus] = useState(null);
+  const [showSchedulerConfig, setShowSchedulerConfig] = useState(false);
+  const [schedulerLoading, setSchedulerLoading] = useState(false);
+  const [schedulerMsg, setSchedulerMsg] = useState(null);
   const [modelCascade, setModelCascade] = useState([
     'gemini-3.5-flash-lite',
     'gemini-3.6-flash',
@@ -87,7 +94,55 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
         }
       })
       .catch(() => {});
+
+    fetchSchedulerStatus()
+      .then(data => setSchedulerStatus(data))
+      .catch(() => {});
   }, []);
+
+  const handleToggleScheduler = async (enabled) => {
+    setSchedulerLoading(true);
+    try {
+      const runs = schedulerStatus?.runs_per_day || 4;
+      const res = await updateSchedulerConfig(enabled, runs);
+      setSchedulerStatus(res);
+      setSchedulerMsg(enabled ? '✓ Automated scans enabled (4x daily)' : '⏸️ Automated scheduler paused');
+      setTimeout(() => setSchedulerMsg(null), 3000);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSchedulerLoading(false);
+    }
+  };
+
+  const handleChangeSchedulerRuns = async (runs) => {
+    setSchedulerLoading(true);
+    try {
+      const enabled = schedulerStatus?.enabled ?? true;
+      const res = await updateSchedulerConfig(enabled, Number(runs));
+      setSchedulerStatus(res);
+      setSchedulerMsg(`✓ Schedule updated to ${runs}x daily`);
+      setTimeout(() => setSchedulerMsg(null), 3000);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSchedulerLoading(false);
+    }
+  };
+
+  const handleRunSchedulerNow = async () => {
+    setSchedulerLoading(true);
+    try {
+      const res = await triggerSchedulerRunNow();
+      setSchedulerMsg('🚀 Triggered automated scan across all channels!');
+      setTimeout(() => setSchedulerMsg(null), 3000);
+      onRefresh();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSchedulerLoading(false);
+    }
+  };
 
   const handleCooldownChange = async (newVal) => {
     const val = Number(newVal);
@@ -586,6 +641,31 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
               <SlidersHorizontal size={12} />
             </button>
 
+            {/* Automated 4x Daily Scheduler Button */}
+            <button
+              type="button"
+              onClick={() => setShowSchedulerConfig(!showSchedulerConfig)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: showSchedulerConfig ? 'rgba(16, 185, 129, 0.15)' : 'var(--bg-input)',
+                border: showSchedulerConfig ? '1px solid #10b981' : (schedulerStatus?.enabled ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid var(--border-subtle)'),
+                color: showSchedulerConfig ? '#10b981' : (schedulerStatus?.enabled ? '#10b981' : 'var(--text-secondary)'),
+                padding: '7px 12px',
+                borderRadius: '6px',
+                fontSize: '0.8rem',
+                fontWeight: '700',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              title="Configure Automated 4x Daily Background Video Scans"
+            >
+              <Clock size={14} color="#10b981" />
+              Auto-Scan ({schedulerStatus?.enabled ? `${schedulerStatus.runs_per_day || 4}x/Day` : 'Paused'})
+              <SlidersHorizontal size={12} />
+            </button>
+
             <button
               onClick={() => onTriggerScanAll(scanLimit, scanAfterDate)}
               disabled={isScanning}
@@ -610,6 +690,155 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
             </button>
           </div>
         </div>
+
+        {/* Automated Background Scheduler Configuration Drawer */}
+        {showSchedulerConfig && (
+          <div style={{
+            marginTop: '20px',
+            padding: '18px 20px',
+            background: 'var(--bg-card-subtle)',
+            borderRadius: '12px',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+            marginBottom: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Clock size={16} color="#10b981" />
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+                    Automated Scheduled Video Scanner (SGT)
+                  </h4>
+                  {schedulerMsg && (
+                    <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '4px' }}>
+                      {schedulerMsg}
+                    </span>
+                  )}
+                </div>
+                <p style={{ margin: '4px 0 0', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                  Automatically checks all enabled creators in the background, discovers new videos uploaded since the last scan, and enqueues them for sequential AI analysis.
+                </p>
+              </div>
+
+              {/* Status & Immediate Run Action */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => handleToggleScheduler(!schedulerStatus?.enabled)}
+                  disabled={schedulerLoading}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    fontSize: '0.78rem',
+                    fontWeight: '800',
+                    cursor: 'pointer',
+                    background: schedulerStatus?.enabled ? 'var(--color-buy-bg)' : 'var(--color-sell-bg)',
+                    border: schedulerStatus?.enabled ? '1px solid var(--color-buy-border)' : '1px solid var(--color-sell-border)',
+                    color: schedulerStatus?.enabled ? 'var(--color-buy)' : 'var(--color-sell)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {schedulerStatus?.enabled ? '🟢 AUTO-SCAN ACTIVE' : '⏸️ AUTO-SCAN PAUSED'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleRunSchedulerNow}
+                  disabled={schedulerLoading || isScanning}
+                  style={{
+                    background: 'var(--color-brand)',
+                    color: '#ffffff',
+                    border: 'none',
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    fontSize: '0.78rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 8px var(--color-brand-glow)'
+                  }}
+                >
+                  <Play size={12} fill="#ffffff" /> Check for New Videos Now
+                </button>
+              </div>
+            </div>
+
+            {/* Schedule Configuration Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: '14px',
+              padding: '12px 14px',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: '10px'
+            }}>
+              {/* Frequency Selector */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>
+                  Scan Frequency:
+                </label>
+                <select
+                  value={schedulerStatus?.runs_per_day || 4}
+                  onChange={(e) => handleChangeSchedulerRuns(e.target.value)}
+                  disabled={schedulerLoading}
+                  style={{
+                    width: '100%',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    background: 'var(--bg-input)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.8rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  <option value={4}>4x Daily (Every 6 Hours: 00:00, 06:00, 12:00, 18:00 SGT)</option>
+                  <option value={6}>6x Daily (Every 4 Hours)</option>
+                  <option value={3}>3x Daily (06:00, 14:00, 22:00 SGT)</option>
+                  <option value={2}>2x Daily (08:00, 20:00 SGT)</option>
+                  <option value={1}>1x Daily (08:00 SGT)</option>
+                  <option value={12}>12x Daily (Every 2 Hours)</option>
+                  <option value={24}>24x Daily (Hourly)</option>
+                </select>
+              </div>
+
+              {/* Next Scheduled Run */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>
+                  Next Automated Run:
+                </label>
+                <div style={{ fontSize: '0.82rem', fontWeight: '700', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', height: '32px' }}>
+                  <Calendar size={14} color="#10b981" />
+                  {schedulerStatus?.enabled && schedulerStatus?.next_run_time ? schedulerStatus.next_run_time : (schedulerStatus?.enabled ? 'Calculating next run...' : 'Paused')}
+                </div>
+              </div>
+
+              {/* Last Run Summary */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase' }}>
+                  Last Automated Run:
+                </label>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', height: '32px' }}>
+                  {schedulerStatus?.last_run?.last_run_formatted ? (
+                    <span>
+                      <strong>{schedulerStatus.last_run.last_run_formatted}</strong> ({schedulerStatus.last_run.message})
+                    </span>
+                  ) : (
+                    <span style={{ fontStyle: 'italic' }}>No automated runs recorded yet</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Model Cascade Configuration Drawer */}
         {showModelConfig && (

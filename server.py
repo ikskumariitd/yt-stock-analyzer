@@ -29,6 +29,7 @@ from transcript_extractor import extract_video_id, get_video_transcript
 from analyzer import analyze_transcript_with_gemini
 from channel_scanner import get_latest_videos_from_rss, get_channel_id_from_url
 from scan_queue import scan_queue
+import scheduler
 
 # Initialize SQLite database
 db.init_db()
@@ -425,6 +426,31 @@ def update_scan_settings(req: SettingsRequest):
         "cooldown_seconds": scan_queue.get_cooldown_seconds(),
         "model_cascade": db.get_model_cascade()
     }
+
+
+class SchedulerConfigRequest(BaseModel):
+    enabled: bool
+    runs_per_day: Optional[int] = 4
+
+
+@app.on_event("startup")
+def on_app_startup():
+    scheduler.start_scheduler()
+
+
+@app.get("/api/scheduler/status")
+def get_scheduler_status():
+    return scheduler.get_scheduler_status()
+
+
+@app.post("/api/scheduler/config")
+def update_scheduler_config(req: SchedulerConfigRequest):
+    return scheduler.update_scheduler_config(enabled=req.enabled, runs_per_day=req.runs_per_day or 4)
+
+
+@app.post("/api/scheduler/run-now")
+async def trigger_scheduler_run_now():
+    return await scheduler.trigger_run_now()
 
 
 @app.get("/api/scan/status")

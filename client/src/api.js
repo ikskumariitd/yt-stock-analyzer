@@ -170,3 +170,27 @@ export async function syncLiveYoutubeSubscriptions() {
   return res.json();
 }
 
+export async function fetchSchedulerStatus() {
+  const res = await fetch(`${API_BASE}/scheduler/status`);
+  if (!res.ok) throw new Error('Failed to fetch scheduler status');
+  return res.json();
+}
+
+export async function updateSchedulerConfig(enabled, runsPerDay = 4) {
+  const res = await fetch(`${API_BASE}/scheduler/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled, runs_per_day: runsPerDay })
+  });
+  if (!res.ok) throw new Error('Failed to update scheduler config');
+  return res.json();
+}
+
+export async function triggerSchedulerRunNow() {
+  const res = await fetch(`${API_BASE}/scheduler/run-now`, {
+    method: 'POST'
+  });
+  if (!res.ok) throw new Error('Failed to trigger immediate auto-scan');
+  return res.json();
+}
+
