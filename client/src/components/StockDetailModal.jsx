@@ -1,5 +1,6 @@
 import React from 'react';
-import { X, ExternalLink, ShieldAlert, CheckCircle2, Play, Calendar, User, Clock, AlertTriangle } from 'lucide-react';
+import { X, ExternalLink, ShieldAlert, CheckCircle2, Play, Calendar, User, Clock, AlertTriangle, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
+import { formatSingaporeDate } from '../utils/timeUtils';
 
 export default function StockDetailModal({ recommendation, onClose }) {
   if (!recommendation) return null;
@@ -75,7 +76,7 @@ export default function StockDetailModal({ recommendation, onClose }) {
 
         {/* Header Section */}
         <div style={{ marginBottom: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
             <span className="font-mono" style={{ fontSize: '2rem', fontWeight: '800', color: 'var(--color-brand)' }}>
               {r.ticker}
             </span>
@@ -83,6 +84,47 @@ export default function StockDetailModal({ recommendation, onClose }) {
             <span className="badge badge-buy" style={{ fontSize: '0.85rem' }}>
               {r.sentiment}
             </span>
+
+            {r.stance_change === 'UPGRADED' && (
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: '800',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                background: 'var(--color-buy-bg)',
+                border: '1px solid var(--color-buy-border)',
+                color: 'var(--color-buy)'
+              }}>
+                🚀 UPGRADED CALL
+              </span>
+            )}
+            {r.stance_change === 'DOWNGRADED' && (
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: '800',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                background: 'var(--color-sell-bg)',
+                border: '1px solid var(--color-sell-border)',
+                color: 'var(--color-sell)'
+              }}>
+                🔻 DOWNGRADED CALL
+              </span>
+            )}
+            {r.stance_change === 'REITERATED' && (
+              <span style={{
+                fontSize: '0.75rem',
+                fontWeight: '800',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                background: 'rgba(99, 102, 241, 0.12)',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                color: 'var(--color-brand)'
+              }}>
+                🔁 REITERATED
+              </span>
+            )}
+
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: '600' }}>
               {r.market || 'US'}
             </span>
@@ -91,6 +133,38 @@ export default function StockDetailModal({ recommendation, onClose }) {
             {r.company_name}
           </h2>
         </div>
+
+        {/* Stance Evolution Banner (When creator has prior coverage) */}
+        {r.previous_sentiment && (
+          <div style={{
+            padding: '12px 16px',
+            background: r.stance_change === 'UPGRADED' ? 'var(--color-buy-bg)' : (r.stance_change === 'DOWNGRADED' ? 'var(--color-sell-bg)' : 'rgba(99, 102, 241, 0.08)'),
+            border: r.stance_change === 'UPGRADED' ? '1px solid var(--color-buy-border)' : (r.stance_change === 'DOWNGRADED' ? '1px solid var(--color-sell-border)' : '1px solid rgba(99, 102, 241, 0.2)'),
+            borderRadius: '10px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {r.stance_change === 'UPGRADED' ? (
+                <TrendingUp size={18} color="var(--color-buy)" />
+              ) : r.stance_change === 'DOWNGRADED' ? (
+                <TrendingDown size={18} color="var(--color-sell)" />
+              ) : (
+                <RefreshCw size={16} color="var(--color-brand)" />
+              )}
+              <span style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+                Creator Stance Shift: {r.previous_sentiment} ➔ {r.sentiment}
+              </span>
+            </div>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+              Call #{r.call_sequence_index || 2} of {r.total_creator_calls || 2} by {r.channel_name} {r.previous_published_at ? `(prev: ${formatSingaporeDate(r.previous_published_at)})` : ''}
+            </span>
+          </div>
+        )}
 
         {/* Price & Strategy Highlights */}
         <div style={{

@@ -53,6 +53,7 @@ export default function App() {
   const [sentiment, setSentiment] = useState('ALL');
   const [channel, setChannel] = useState('ALL');
   const [days, setDays] = useState('30'); // Default 1 month (30 days)
+  const [stanceChange, setStanceChange] = useState('ALL'); // 'ALL' | 'CHANGES_ONLY' | 'UPGRADED' | 'DOWNGRADED' | 'REITERATED'
   const [sortBy, setSortBy] = useState('mentions'); // Default most recommended first
   
   // Modals
@@ -64,8 +65,8 @@ export default function App() {
     try {
       if (!isSilent) setLoading(true);
       const [recsData, consensusList, statsData, channelsData] = await Promise.all([
-        fetchRecommendations({ search, sentiment, channel, days, limit: 100 }),
-        fetchConsensus({ search, sentiment, channel, days, sortBy }),
+        fetchRecommendations({ search, sentiment, channel, days, stanceChange, limit: 100 }),
+        fetchConsensus({ search, sentiment, channel, days, stanceChange, sortBy }),
         fetchStats(),
         fetchChannels()
       ]);
@@ -79,7 +80,7 @@ export default function App() {
     } finally {
       if (!isSilent) setLoading(false);
     }
-  }, [search, sentiment, channel, days, sortBy, viewMode]);
+  }, [search, sentiment, channel, days, stanceChange, sortBy, viewMode]);
 
   useEffect(() => {
     loadData();
@@ -212,6 +213,8 @@ export default function App() {
               setChannel={setChannel}
               days={days}
               setDays={setDays}
+              stanceChange={stanceChange}
+              setStanceChange={setStanceChange}
               sortBy={sortBy}
               setSortBy={setSortBy}
               channelsList={channels}

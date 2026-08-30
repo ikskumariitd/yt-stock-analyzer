@@ -19,6 +19,14 @@ const DATE_OPTIONS = [
   { id: 'ALL', label: 'Max (All Time)' },
 ];
 
+const STANCE_OPTIONS = [
+  { id: 'ALL', label: 'All Trajectories' },
+  { id: 'CHANGES_ONLY', label: '⚡ Upgrades & Downgrades' },
+  { id: 'UPGRADED', label: '🚀 Upgrades Only' },
+  { id: 'DOWNGRADED', label: '🔻 Downgrades Only' },
+  { id: 'REITERATED', label: '🔁 Reiterated Stances' },
+];
+
 const SORT_OPTIONS = [
   { id: 'mentions', label: '👥 Most Recommended' },
   { id: 'date', label: '📅 Newest Video Date' },
@@ -35,6 +43,8 @@ export default function FilterBar({
   setChannel,
   days = '30',
   setDays,
+  stanceChange = 'ALL',
+  setStanceChange,
   sortBy = 'mentions',
   setSortBy,
   channelsList,
@@ -98,7 +108,7 @@ export default function FilterBar({
               onClick={() => setSearch('')}
               style={{
                 position: 'absolute',
-                right: '10px',
+                right: '12px',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 background: 'transparent',
@@ -112,10 +122,10 @@ export default function FilterBar({
           )}
         </div>
 
-        {/* View Switcher: Individual vs Consensus Clubbed */}
+        {/* View Mode Toggle: Consensus (Clubbed) vs Individual Feed */}
         <div style={{
           display: 'flex',
-          background: 'var(--nav-bg)',
+          background: 'var(--bg-input)',
           border: '1px solid var(--border-subtle)',
           borderRadius: '8px',
           padding: '3px',
@@ -275,6 +285,59 @@ export default function FilterBar({
                 }}
               >
                 {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Row 3: Stance Drift / Evolution Trajectory Filter */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        flexWrap: 'wrap',
+        marginTop: '12px',
+        paddingTop: '10px',
+        borderTop: '1px dashed var(--border-subtle)'
+      }}>
+        <span style={{ fontSize: '0.73rem', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          🔄 Creator Trajectory:
+        </span>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+          {STANCE_OPTIONS.map(stOpt => {
+            const isSelected = stanceChange === stOpt.id;
+            let activeBg = 'rgba(99, 102, 241, 0.12)';
+            let activeColor = 'var(--color-brand)';
+            let activeBorder = '1px solid var(--color-brand)';
+
+            if (stOpt.id === 'UPGRADED') {
+              activeBg = 'var(--color-buy-bg)';
+              activeColor = 'var(--color-buy)';
+              activeBorder = '1px solid var(--color-buy)';
+            } else if (stOpt.id === 'DOWNGRADED') {
+              activeBg = 'var(--color-sell-bg)';
+              activeColor = 'var(--color-sell)';
+              activeBorder = '1px solid var(--color-sell)';
+            }
+
+            return (
+              <button
+                key={stOpt.id}
+                onClick={() => setStanceChange && setStanceChange(stOpt.id)}
+                style={{
+                  padding: '4px 9px',
+                  borderRadius: '6px',
+                  fontSize: '0.72rem',
+                  fontWeight: isSelected ? '800' : '600',
+                  border: isSelected ? activeBorder : '1px solid var(--border-subtle)',
+                  background: isSelected ? activeBg : 'var(--bg-card-subtle)',
+                  color: isSelected ? activeColor : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {stOpt.label}
               </button>
             );
           })}

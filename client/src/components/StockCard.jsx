@@ -66,14 +66,58 @@ export default function StockCard({ recommendation, onOpenDetail }) {
             </p>
           </div>
 
-          <span className={`badge ${badgeClass}`}>
-            {r.sentiment}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <span className={`badge ${badgeClass}`}>
+              {r.sentiment}
+            </span>
+            {r.stance_change === 'UPGRADED' && (
+              <span style={{
+                fontSize: '0.68rem',
+                fontWeight: '900',
+                padding: '2px 7px',
+                borderRadius: '6px',
+                background: 'var(--color-buy-bg)',
+                border: '1px solid var(--color-buy-border)',
+                color: 'var(--color-buy)',
+                letterSpacing: '0.02em'
+              }}>
+                🚀 UPGRADED
+              </span>
+            )}
+            {r.stance_change === 'DOWNGRADED' && (
+              <span style={{
+                fontSize: '0.68rem',
+                fontWeight: '900',
+                padding: '2px 7px',
+                borderRadius: '6px',
+                background: 'var(--color-sell-bg)',
+                border: '1px solid var(--color-sell-border)',
+                color: 'var(--color-sell)',
+                letterSpacing: '0.02em'
+              }}>
+                🔻 DOWNGRADED
+              </span>
+            )}
+            {r.stance_change === 'REITERATED' && (
+              <span style={{
+                fontSize: '0.68rem',
+                fontWeight: '900',
+                padding: '2px 7px',
+                borderRadius: '6px',
+                background: 'rgba(99, 102, 241, 0.12)',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                color: 'var(--color-brand)',
+                letterSpacing: '0.02em'
+              }}>
+                🔁 REITERATED
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Strategy Type Pill */}
-        {r.strategy_type && (
-          <div style={{ marginBottom: '16px' }}>
+        {/* Strategy Type Pill & Stance Details */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+          {r.strategy_type && (
             <span style={{
               fontSize: '0.7rem',
               fontWeight: '700',
@@ -86,8 +130,13 @@ export default function StockCard({ recommendation, onOpenDetail }) {
             }}>
               {r.strategy_type}
             </span>
-          </div>
-        )}
+          )}
+          {r.previous_sentiment && (
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+              was {r.previous_sentiment}
+            </span>
+          )}
+        </div>
 
         {/* Key Price Levels Box */}
         <div style={{

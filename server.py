@@ -192,6 +192,7 @@ def get_recommendations(
     channel: Optional[str] = Query(None, description="Channel filter"),
     market: Optional[str] = Query(None, description="Market filter: US, India, etc."),
     days: Optional[str] = Query(None, description="Filter within past N days, YTD, or ALL"),
+    stance_change: Optional[str] = Query(None, description="Stance evolution filter: UPGRADED, DOWNGRADED, REITERATED, INITIAL, CHANGES_ONLY"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0)
 ):
@@ -202,6 +203,7 @@ def get_recommendations(
         channel_name=channel,
         market=market,
         days=days,
+        stance_change=stance_change,
         limit=limit,
         offset=offset
     )
@@ -214,6 +216,7 @@ def get_consensus(
     channel: Optional[str] = Query(None, description="Channel filter"),
     market: Optional[str] = Query(None, description="Market filter"),
     days: Optional[str] = Query(None, description="Filter within past N days, YTD, or ALL"),
+    stance_change: Optional[str] = Query(None, description="Stance evolution filter: UPGRADED, DOWNGRADED, REITERATED, CHANGES_ONLY"),
     sort_by: str = Query("mentions", description="Sort by: mentions, date, ticker, bullish")
 ):
     return db.query_consensus(
@@ -222,6 +225,7 @@ def get_consensus(
         channel_name=channel,
         market=market,
         days=days,
+        stance_change=stance_change,
         sort_by=sort_by
     )
 

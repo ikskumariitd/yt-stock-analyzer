@@ -177,6 +177,47 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                     }}>
                       CONSENSUS: {domSentStyle.label}
                     </span>
+
+                    {/* Stance Change Summary Indicators */}
+                    {stock.upgrades_count > 0 && (
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: 'var(--color-buy-bg)',
+                        border: '1px solid var(--color-buy-border)',
+                        color: 'var(--color-buy)',
+                        fontSize: '0.7rem',
+                        fontWeight: '900'
+                      }}>
+                        🚀 {stock.upgrades_count} {stock.upgrades_count === 1 ? 'Upgrade' : 'Upgrades'}
+                      </span>
+                    )}
+                    {stock.downgrades_count > 0 && (
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: 'var(--color-sell-bg)',
+                        border: '1px solid var(--color-sell-border)',
+                        color: 'var(--color-sell)',
+                        fontSize: '0.7rem',
+                        fontWeight: '900'
+                      }}>
+                        🔻 {stock.downgrades_count} {stock.downgrades_count === 1 ? 'Downgrade' : 'Downgrades'}
+                      </span>
+                    )}
+                    {stock.reiterations_count > 0 && (
+                      <span style={{
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: 'rgba(99, 102, 241, 0.1)',
+                        border: '1px solid rgba(99, 102, 241, 0.25)',
+                        color: 'var(--color-brand)',
+                        fontSize: '0.7rem',
+                        fontWeight: '800'
+                      }}>
+                        🔁 {stock.reiterations_count} Reiteration{stock.reiterations_count > 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -264,6 +305,117 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
             {/* Expanded Detailed Creator Reviews with Connected Left Timeline Rail */}
             {isExpanded && (
               <div style={{ padding: '20px 24px 24px', background: 'var(--bg-card-subtle)' }}>
+                {/* Creator Stance Evolution Trajectory Steppers Box */}
+                {stock.creator_evolutions && stock.creator_evolutions.length > 0 && (
+                  <div style={{
+                    marginBottom: '20px',
+                    padding: '14px 18px',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '12px',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+                  }}>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      fontWeight: '800',
+                      color: 'var(--text-muted)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      marginBottom: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <Sparkles size={14} color="var(--color-brand)" />
+                      Creator Stance Trajectories & Drift Over Time:
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {stock.creator_evolutions.map((ce, cIdx) => (
+                        <div
+                          key={ce.creator_name || cIdx}
+                          style={{
+                            padding: '10px 14px',
+                            background: 'var(--bg-card-subtle)',
+                            border: '1px solid var(--border-subtle)',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '0.82rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+                                👤 {ce.creator_name}
+                              </span>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                ({ce.total_calls} historical calls)
+                              </span>
+                            </div>
+
+                            {ce.latest_stance_change === 'UPGRADED' && (
+                              <span style={{ fontSize: '0.7rem', fontWeight: '900', color: 'var(--color-buy)', background: 'var(--color-buy-bg)', border: '1px solid var(--color-buy-border)', padding: '2px 8px', borderRadius: '6px' }}>
+                                🚀 NET UPGRADED ({ce.first_stance} ➔ {ce.latest_stance})
+                              </span>
+                            )}
+                            {ce.latest_stance_change === 'DOWNGRADED' && (
+                              <span style={{ fontSize: '0.7rem', fontWeight: '900', color: 'var(--color-sell)', background: 'var(--color-sell-bg)', border: '1px solid var(--color-sell-border)', padding: '2px 8px', borderRadius: '6px' }}>
+                                🔻 NET DOWNGRADED ({ce.first_stance} ➔ {ce.latest_stance})
+                              </span>
+                            )}
+                            {ce.latest_stance_change === 'REITERATED' && (
+                              <span style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--color-brand)', background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.25)', padding: '2px 8px', borderRadius: '6px' }}>
+                                🔁 REITERATED {ce.latest_stance}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Step Flow with Arrows */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', overflowX: 'auto', paddingBottom: '2px' }}>
+                            {ce.steps.map((st, sIdx) => {
+                              const sStyle = SENTIMENT_COLORS[st.sentiment] || SENTIMENT_COLORS.BUY;
+                              const stDate = formatSingaporeDate(st.published_at);
+                              return (
+                                <React.Fragment key={st.id || sIdx}>
+                                  <div style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    background: sStyle.bg,
+                                    border: `1px solid ${sStyle.border}`,
+                                    fontSize: '0.72rem',
+                                    whiteSpace: 'nowrap'
+                                  }}>
+                                    <span style={{ fontWeight: '700', color: 'var(--text-secondary)' }}>
+                                      {stDate}:
+                                    </span>
+                                    <span style={{ fontWeight: '900', color: sStyle.text }}>
+                                      {st.sentiment}
+                                    </span>
+                                    {st.target_price && (
+                                      <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }}>
+                                        ({st.target_price})
+                                      </span>
+                                    )}
+                                  </div>
+                                  {sIdx < ce.steps.length - 1 && (
+                                    <span style={{ color: 'var(--color-brand)', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                      ➔
+                                    </span>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div style={{
                   fontSize: '0.75rem',
                   fontWeight: '800',
@@ -276,7 +428,7 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                   gap: '8px'
                 }}>
                   <Video size={14} color="var(--color-brand)" />
-                  Creator Timeline & Stances for {stock.ticker}:
+                  Creator Timeline & Reviews for {stock.ticker}:
                 </div>
 
                 {/* Vertical Timeline Track Container */}
@@ -362,6 +514,60 @@ export default function ConsensusView({ consensusData = [], onSelectStock }) {
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            {/* Stance Evolution Badge */}
+                            {call.stance_change === 'UPGRADED' && (
+                              <span style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: 'var(--color-buy-bg)',
+                                border: '1px solid var(--color-buy-border)',
+                                color: 'var(--color-buy)',
+                                fontSize: '0.72rem',
+                                fontWeight: '900'
+                              }}>
+                                🚀 UPGRADED {call.previous_sentiment ? `(from ${call.previous_sentiment})` : ''}
+                              </span>
+                            )}
+                            {call.stance_change === 'DOWNGRADED' && (
+                              <span style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: 'var(--color-sell-bg)',
+                                border: '1px solid var(--color-sell-border)',
+                                color: 'var(--color-sell)',
+                                fontSize: '0.72rem',
+                                fontWeight: '900'
+                              }}>
+                                🔻 DOWNGRADED {call.previous_sentiment ? `(from ${call.previous_sentiment})` : ''}
+                              </span>
+                            )}
+                            {call.stance_change === 'REITERATED' && (
+                              <span style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: 'rgba(99, 102, 241, 0.12)',
+                                border: '1px solid rgba(99, 102, 241, 0.3)',
+                                color: 'var(--color-brand)',
+                                fontSize: '0.72rem',
+                                fontWeight: '800'
+                              }}>
+                                🔁 REITERATED
+                              </span>
+                            )}
+                            {call.stance_change === 'INITIAL' && (
+                              <span style={{
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                background: 'var(--bg-card-subtle)',
+                                border: '1px solid var(--border-subtle)',
+                                color: 'var(--text-muted)',
+                                fontSize: '0.7rem',
+                                fontWeight: '700'
+                              }}>
+                                🆕 INITIAL CALL
+                              </span>
+                            )}
+
                             {/* Stock Ticker Pill */}
                             <span style={{
                               padding: '4px 10px',

@@ -357,6 +357,120 @@ def save_video_analysis(
 
 
 
+SENTIMENT_SCORE = {
+    "STRONG_BUY": 3,
+    "STRONGBUY": 3,
+    "BUY": 2,
+    "ACCUMULATE": 1,
+    "WATCHLIST": 0,
+    "HOLD": 0,
+    "NEUTRAL": 0,
+    "SELL": -2,
+    "AVOID": -2
+}
+
+
+def normalize_date_for_sort(d_str: Optional[str]) -> str:
+    if not d_str:
+        return ""
+    s = str(d_str).strip()
+    if len(s) == 8 and s.isdigit():
+        return f"{s[:4]}-{s[4:6]}-{s[6:8]}"
+    return s
+
+
+def enrich_recommendations_with_stance_evolution(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Enriches each recommendation with creator stance evolution (UPGRADED, DOWNGRADED, REITERATED, INITIAL).
+    Uses full historical database context for each (ticker, creator) pair.
+    """
+    if not items:
+        return []
+
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, ticker, channel_name, sentiment, target_price, buy_entry_zone,
+                   published_at, created_at, video_title, video_url
+            FROM recommendations
+            ORDER BY id ASC
+        """)
+        all_recs = cursor.fetchall()
+
+    history_map: Dict[Tuple[str, str], List[Dict[str, Any]]] = {}
+    for r in all_recs:
+        t = (r["ticker"] or "").upper().strip()
+        ch = (r["channel_name"] or "").strip().lower().replace("@", "")
+        key = (t, ch)
+        if key not in history_map:
+            history_map[key] = []
+        history_map[key].append(dict(r))
+
+    # Sort each history group chronologically ASC using normalized date
+    for key in history_map:
+        history_map[key].sort(key=lambda x: (
+            normalize_date_for_sort(x.get("published_at") or x.get("created_at")),
+            x["id"]
+        ))
+
+    stance_meta: Dict[int, Dict[str, Any]] = {}
+    for key, calls in history_map.items():
+        for i, curr in enumerate(calls):
+            cid = curr["id"]
+            curr_sent = (curr.get("sentiment") or "BUY").upper().replace(" ", "_")
+            curr_score = SENTIMENT_SCORE.get(curr_sent, 2)
+            
+            if i == 0:
+                stance_meta[cid] = {
+                    "stance_change": "INITIAL",
+                    "previous_sentiment": None,
+                    "previous_published_at": None,
+                    "previous_target_price": None,
+                    "previous_entry_zone": None,
+                    "shift_delta": 0,
+                    "call_sequence_index": 1,
+                    "total_creator_calls": len(calls)
+                }
+            else:
+                prev = calls[i - 1]
+                prev_sent = (prev.get("sentiment") or "BUY").upper().replace(" ", "_")
+                prev_score = SENTIMENT_SCORE.get(prev_sent, 2)
+                delta = curr_score - prev_score
+                
+                if delta > 0:
+                    change_type = "UPGRADED"
+                elif delta < 0:
+                    change_type = "DOWNGRADED"
+                else:
+                    change_type = "REITERATED"
+                
+                stance_meta[cid] = {
+                    "stance_change": change_type,
+                    "previous_sentiment": prev.get("sentiment"),
+                    "previous_published_at": prev.get("published_at") or prev.get("created_at"),
+                    "previous_target_price": prev.get("target_price"),
+                    "previous_entry_zone": prev.get("buy_entry_zone"),
+                    "shift_delta": delta,
+                    "call_sequence_index": i + 1,
+                    "total_creator_calls": len(calls)
+                }
+
+    for item in items:
+        meta = stance_meta.get(item.get("id"), {
+            "stance_change": "INITIAL",
+            "previous_sentiment": None,
+            "previous_published_at": None,
+            "previous_target_price": None,
+            "previous_entry_zone": None,
+            "shift_delta": 0,
+            "call_sequence_index": 1,
+            "total_creator_calls": 1
+        })
+        item.update(meta)
+
+    return items
+
+
 def query_recommendations(
     search: Optional[str] = None,
     ticker: Optional[str] = None,
@@ -364,6 +478,7 @@ def query_recommendations(
     channel_name: Optional[str] = None,
     market: Optional[str] = None,
     days: Optional[int] = None,
+    stance_change: Optional[str] = None,
     limit: int = 50,
     offset: int = 0
 ) -> Dict[str, Any]:
@@ -446,6 +561,17 @@ def query_recommendations(
                 d["risks"] = [d.get("risks")] if d.get("risks") else []
             results.append(d)
 
+        # Enrich with stance evolution
+        results = enrich_recommendations_with_stance_evolution(results)
+
+        if stance_change and stance_change.upper() != "ALL":
+            sc = stance_change.upper()
+            if sc == "CHANGES_ONLY":
+                results = [r for r in results if r.get("stance_change") in ["UPGRADED", "DOWNGRADED"]]
+            else:
+                results = [r for r in results if r.get("stance_change") == sc]
+            total = len(results)
+
         return {
             "total": total,
             "items": results,
@@ -462,9 +588,10 @@ def query_consensus(
     channel_name: Optional[str] = None,
     market: Optional[str] = None,
     days: Optional[int] = None,
+    stance_change: Optional[str] = None,
     sort_by: str = "mentions"
 ) -> List[Dict[str, Any]]:
-    """Groups recommendations by stock ticker to show consensus across all creators."""
+    """Groups recommendations by stock ticker to show consensus across all creators with stance evolution."""
     all_recs = query_recommendations(
         search=search,
         sentiment=sentiment,
@@ -499,7 +626,6 @@ def query_consensus(
             g["entries"].append(r["buy_entry_zone"])
         g["channels"].add(r.get("channel_name", "Unknown"))
         
-        # Keep latest date
         item_date = r.get("published_at") or r.get("created_at", "")
         if item_date and item_date > g["latest_date"]:
             g["latest_date"] = item_date
@@ -512,7 +638,6 @@ def query_consensus(
         total_calls = len(data["calls"])
         unique_creators = len(data["channels"])
         
-        # Count sentiment frequencies
         sentiment_counts = {}
         for s in data["sentiments"]:
             sentiment_counts[s] = sentiment_counts.get(s, 0) + 1
@@ -524,9 +649,73 @@ def query_consensus(
             reverse=True
         )
 
-        # Dominant stance
         dominant_sentiment = max(sentiment_counts.items(), key=lambda x: x[1])[0]
         platforms = list(set(r.get("platform", "youtube") for r in data["calls"]))
+
+        # Build creator evolution trajectories
+        creator_evolutions = []
+        creator_grouped_calls: Dict[str, List[Dict[str, Any]]] = {}
+        for c in data["calls"]:
+            ch = c.get("channel_name", "Creator")
+            if ch not in creator_grouped_calls:
+                creator_grouped_calls[ch] = []
+            creator_grouped_calls[ch].append(c)
+
+        upgrades_count = 0
+        downgrades_count = 0
+        reiterations_count = 0
+
+        for ch, ch_calls in creator_grouped_calls.items():
+            ch_calls_asc = sorted(
+                ch_calls,
+                key=lambda x: (x.get("published_at") or x.get("created_at") or "")
+            )
+            for c in ch_calls:
+                if c.get("stance_change") == "UPGRADED":
+                    upgrades_count += 1
+                elif c.get("stance_change") == "DOWNGRADED":
+                    downgrades_count += 1
+                elif c.get("stance_change") == "REITERATED":
+                    reiterations_count += 1
+
+            if len(ch_calls) > 1:
+                latest_call = ch_calls_asc[-1]
+                first_call = ch_calls_asc[0]
+                creator_evolutions.append({
+                    "creator_name": ch,
+                    "total_calls": len(ch_calls),
+                    "first_stance": first_call.get("sentiment"),
+                    "first_date": first_call.get("published_at") or first_call.get("created_at"),
+                    "latest_stance": latest_call.get("sentiment"),
+                    "latest_date": latest_call.get("published_at") or latest_call.get("created_at"),
+                    "latest_stance_change": latest_call.get("stance_change"),
+                    "steps": [
+                        {
+                            "id": c.get("id"),
+                            "sentiment": c.get("sentiment"),
+                            "stance_change": c.get("stance_change"),
+                            "previous_sentiment": c.get("previous_sentiment"),
+                            "published_at": c.get("published_at") or c.get("created_at"),
+                            "target_price": c.get("target_price"),
+                            "buy_entry_zone": c.get("buy_entry_zone"),
+                            "video_title": c.get("video_title"),
+                            "video_url": c.get("video_url")
+                        }
+                        for c in ch_calls_asc
+                    ]
+                })
+
+        # Apply stance_change filter if requested
+        if stance_change and stance_change.upper() != "ALL":
+            sc = stance_change.upper()
+            if sc == "UPGRADED" and upgrades_count == 0:
+                continue
+            elif sc == "DOWNGRADED" and downgrades_count == 0:
+                continue
+            elif sc == "REITERATED" and reiterations_count == 0:
+                continue
+            elif sc == "CHANGES_ONLY" and (upgrades_count == 0 and downgrades_count == 0):
+                continue
 
         results.append({
             "ticker": ticker,
@@ -539,6 +728,11 @@ def query_consensus(
             "latest_date": data["latest_date"],
             "dominant_sentiment": dominant_sentiment,
             "sentiment_counts": sentiment_counts,
+            "upgrades_count": upgrades_count,
+            "downgrades_count": downgrades_count,
+            "reiterations_count": reiterations_count,
+            "has_stance_change": (upgrades_count > 0 or downgrades_count > 0),
+            "creator_evolutions": creator_evolutions,
             "targets": list(set(data["targets"])),
             "entries": list(set(data["entries"])),
             "calls": sorted_calls

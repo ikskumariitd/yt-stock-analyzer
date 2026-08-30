@@ -1,6 +1,6 @@
 const API_BASE = '/api';
 
-export async function fetchRecommendations({ search, ticker, sentiment, channel, market, days, limit = 50, offset = 0 } = {}) {
+export async function fetchRecommendations({ search, ticker, sentiment, channel, market, days, stanceChange, limit = 50, offset = 0 } = {}) {
   const params = new URLSearchParams();
   if (search) params.append('search', search);
   if (ticker) params.append('ticker', ticker);
@@ -8,6 +8,7 @@ export async function fetchRecommendations({ search, ticker, sentiment, channel,
   if (channel && channel !== 'ALL') params.append('channel', channel);
   if (market && market !== 'ALL') params.append('market', market);
   if (days && days !== 'ALL') params.append('days', days);
+  if (stanceChange && stanceChange !== 'ALL') params.append('stance_change', stanceChange);
   params.append('limit', limit);
   params.append('offset', offset);
 
@@ -16,13 +17,14 @@ export async function fetchRecommendations({ search, ticker, sentiment, channel,
   return res.json();
 }
 
-export async function fetchConsensus({ search, sentiment, channel, market, days, sortBy = 'mentions' } = {}) {
+export async function fetchConsensus({ search, sentiment, channel, market, days, stanceChange, sortBy = 'mentions' } = {}) {
   const params = new URLSearchParams();
   if (search) params.append('search', search);
   if (sentiment && sentiment !== 'ALL') params.append('sentiment', sentiment);
   if (channel && channel !== 'ALL') params.append('channel', channel);
   if (market && market !== 'ALL') params.append('market', market);
   if (days && days !== 'ALL') params.append('days', days);
+  if (stanceChange && stanceChange !== 'ALL') params.append('stance_change', stanceChange);
   if (sortBy) params.append('sort_by', sortBy);
 
   const res = await fetch(`${API_BASE}/consensus?${params.toString()}`);
