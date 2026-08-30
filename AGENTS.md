@@ -1,6 +1,6 @@
-# AGENTS.md: Developer & Agent Guide for AlphaPulse
+# AGENTS.md: Developer & Agent Architecture Guide for AlphaPulse
 
-Welcome to **AlphaPulse**, an AI-powered financial intelligence and stock analysis platform that ingests video content from monitored YouTube financial creators, extracts structured stock recommendations, key entry levels, price targets, stop losses, and catalyst theses, and serves them via a modern React dashboard.
+Welcome to **AlphaPulse**, an AI-powered multi-platform financial intelligence platform that monitors financial creators across **YouTube** and **Instagram Reels**, extracts structured stock recommendations, key entry levels, price targets, stop losses, and catalyst theses, and presents them in a modern React dashboard.
 
 ---
 
@@ -8,73 +8,90 @@ Welcome to **AlphaPulse**, an AI-powered financial intelligence and stock analys
 
 ```mermaid
 flowchart TD
-    subgraph Ingestion ["Ingestion Layer"]
-        A["YouTube Atom RSS Feeds (Quota-Free)"] --> C["Video Discovery"]
+    subgraph Ingestion ["Multi-Platform Ingestion Layer"]
+        A["YouTube Atom RSS Feeds (Quota-Free)"] --> C["Video/Reel Discovery"]
         B["YouTube Data API v3 (Live OAuth Sync)"] --> C
-        C --> D["youtube-transcript-api (Subtitle Extraction)"]
+        IG["Instagram Reels API / Scraper"] --> C
+        C --> D{"Duration Pre-Check (>1hr?)"}
+        D -- "> 1 Hour" --> D1["⏱️ Log TOO LONG (0s abort)"]
+        D -- "<= 1 Hour" --> E["Transcript / Audio Extractor"]
     end
 
     subgraph Processing ["Sequential Queue & AI Engine"]
-        D --> E["SequentialScanQueue (1-at-a-time FIFO)"]
-        E --> F{"Is Video in SQLite DB?"}
-        F -- "Yes" --> G["⚡ Instant Skip (0 Tokens)"]
-        F -- "No" --> H["🧠 Gemini 3.6 / 3.7 Flash Structured Extraction"]
-        H --> I["💾 SQLite Repository (stocks.db)"]
-        I --> J["☕ 3-Second Cooldown Delay"]
+        E --> F["SequentialScanQueue (1-at-a-Time FIFO)"]
+        F --> G{"Already Processed in SQLite?"}
+        G -- "Yes" --> H["⚡ Instant Skip (0 Tokens)"]
+        G -- "No" --> I["🧠 Gemini Fallback Cascade Engine"]
+        I --> I1["Priority 1 Model (e.g. gemini-3.5-flash-lite)"]
+        I1 -- "Timeout (>35s/55s) or 429" --> I2["Priority 2 Model (e.g. gemini-3.6-flash)"]
+        I2 -- "Fail" --> I3["Priority 3 Model (e.g. gemini-3.7-flash)"]
+        I --> J["💾 SQLite Repository (stocks.db)"]
+        J --> K["📜 Audit Log Recorder (scan_audit_log)"]
+        K --> L["☕ Configurable Cooldown Delay"]
     end
 
     subgraph Presentation ["Presentation & API Layer"]
-        I --> K["FastAPI REST Endpoints (/api/...)"]
-        K --> L["React 18 + Vite Dashboard (Glassmorphism CSS)"]
+        J --> M["FastAPI REST Endpoints (/api/...)"]
+        M --> N["React 18 + Vite Glassmorphic Dashboard"]
+        N --> N1["🏛️ Stock Radar (Consensus & Feed)"]
+        N --> N2["👥 Creator Management & Tracked Videos Drawer"]
+        N --> N3["🔍 Scan Audit Log & Purge History"]
+        N --> N4["⚙️ AI Model Priority Cascade Manager"]
     end
 ```
 
 ---
 
-## 📁 Key Files and Directories
+## 📁 Key Files and Core Modules
 
 | File | Purpose |
 |---|---|
 | [`server.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/server.py) | Main FastAPI application, REST endpoints, static frontend bundle hosting, and background task orchestrator. |
-| [`scan_queue.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/scan_queue.py) | Sequential FIFO Queue manager processing 1 video at a time with live progress tracking and cancel controls. |
-| [`db.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/db.py) | SQLite database layer managing tables: `channels`, `videos`, and `recommendations` with multi-column filtering. |
-| [`analyzer.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/analyzer.py) | Gemini structured output extraction engine leveraging strict Pydantic schemas. |
-| [`schema.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/schema.py) | Pydantic models for structured output: `VideoStockSummary`, `StockRecommendation`, `MarketSentimentEnum`. |
-| [`transcript_extractor.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/transcript_extractor.py) | Fetches subtitle streams and computes synchronized timestamp anchors. |
-| [`channel_scanner.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/channel_scanner.py) | Public Atom RSS feed reader for quota-free channel video discovery. |
+| [`scan_queue.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/scan_queue.py) | Sequential FIFO queue manager processing 1 video at a time with live progress tracking, duration pre-check, and cancel controls. |
+| [`db.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/db.py) | SQLite database layer managing tables: `channels`, `videos`, `recommendations`, `scan_audit_log`, and `app_settings`. |
+| [`analyzer.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/analyzer.py) | Multi-model Gemini fallback cascade engine with per-model execution timeouts (`35s` text / `55s` audio). |
+| [`schema.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/schema.py) | Strict Pydantic models for structured output: `VideoStockSummary`, `StockRecommendation`, `MarketSentimentEnum`. |
+| [`transcript_extractor.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/transcript_extractor.py) | Subtitle extraction, yt-dlp fast duration metadata probe, and synchronized audio fallback. |
+| [`instagram_extractor.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/instagram_extractor.py) | Instagram Reel discovery, metadata parsing, and profile reel extractors. |
+| [`channel_scanner.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/channel_scanner.py) | Public Atom RSS feed reader for quota-free YouTube channel video discovery. |
 | [`youtube_oauth.py`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/youtube_oauth.py) | Google OAuth 2.0 handler and real-time subscription synchronization engine. |
-| [`client/`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/client) | React 18 + Vite frontend source code. |
-| [`Dockerfile`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/Dockerfile) | Multi-stage production container build file. |
+| [`client/src/components/`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/client/src/components) | React components: `ConsensusView`, `StockCard`, `FilterBar`, `ChannelManager`, `ScanAuditLog`, `StockDetailModal`. |
+| [`client/src/utils/timeUtils.js`](file:///C:/Users/kumar/.gemini/antigravity-ide/scratch/yt-stock-analyzer/client/src/utils/timeUtils.js) | Centralized Singapore Time (SGT / UTC+8) date/time formatting utilities. |
 
 ---
 
 ## 🛡️ Critical Agent Guidelines & Rules
 
-### 1. Free-Tier & Rate-Limit Preservation
-- **Always use Sequential 1-by-1 processing**: Never trigger parallel concurrent video extractions. All video scan tasks must flow through `scan_queue.py`.
-- **Maintain 3-second cooldown**: A 3-second delay must be preserved between video completions in `scan_queue.py` to prevent triggering HTTP 429 rate limits on Google AI Studio.
+### 1. Sequential 1-by-1 Processing & Rate-Limit Safeguards
+- **Never trigger parallel concurrent video extractions**: All video scan tasks must flow sequentially through `scan_queue.py`.
 - **Smart Deduplication**: Always check `db.is_video_processed(video_id)` before calling Gemini to prevent consuming redundant tokens.
+- **1-Hour Duration Limit**: Videos exceeding 3,600 seconds (> 1 hour) are skipped in 0s without downloading audio or burning API quotas, recorded as `TOO LONG`.
 
-### 2. Networking & Windows Compatibility
-- **Force IPv4 Resolution**: On Windows systems, always enforce IPv4 socket resolution (`urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET`) to prevent `[WinError 10051]` unrouted IPv6 socket failures.
-- **UTF-8 Console Reconfiguration**: Ensure `sys.stdout.reconfigure(encoding="utf-8")` is invoked on Windows to prevent `UnicodeEncodeError` when printing emojis or special characters.
+### 2. Multi-Model Cascade & Fallback Mechanism
+- Scans execute through a user-ordered cascade (e.g. `gemini-3.5-flash-lite` $\rightarrow$ `gemini-3.6-flash` $\rightarrow$ `gemini-3.7-flash`).
+- Individual model calls are wrapped in strict threadpool timeouts (35s for text transcripts, 55s for audio).
+- If a model times out or encounters rate limits (429), it logs a cascade notice and seamlessly attempts the next configured model in the cascade.
 
-### 3. Frontend & Presentation Modes
-- **Consensus Radar View (`/api/consensus`)**: Groups recommendations by stock ticker to show consensus sentiment, price targets, and full creator breakdown timelines chronologically.
-- **Per-Channel Fetch Limits**: Each channel allows individual depth controls (1, 2, 3, 5, 10 videos) before queuing.
-- **Tracked Badges**: Visual indicator on each channel card for `X Videos Tracked` and `Y Stock Picks Extracted`.
-- **No Tailwind CSS**: Use pure Vanilla CSS with design tokens defined in `client/src/index.css` (dark-mode glassmorphic aesthetics, glowing pill badges, smooth transitions).
-- **Interactive Time-Jumping**: Recommendation cards and deep-dive modals preserve the `timestamp_reference` field and render clickable links in format `https://youtube.com/watch?v=VIDEO_ID&t=SECONDSs`.
+### 3. Strict Timezone & Date Semantics
+- **Singapore Time (SGT / Asia/Singapore / UTC+8)**: All frontend dates, timestamps, and audit log entries must display in SGT.
+- **Date Semantics**: In Stock Radar and Consensus Views, dates explicitly represent **Video Upload Date** (`published_at`).
 
-### 4. Secret & Git Hygiene
-- **Never commit credentials**: `.env`, `client_secret.json`, `youtube_token.json`, and `stocks.db` must remain strictly ignored in `.gitignore`.
-- Ensure scripts read credentials via environment variables (`$env:GEMINI_API_KEY`, etc.) rather than hardcoded literals.
+### 4. Creators & Tracked Videos
+- On the **Creators** tab, clicking `🎬 {N} Videos Tracked` expands an in-line drawer showing all analyzed videos for that creator strictly ordered by **Upload Date DESC (`published_at DESC`)** with clickable links and stock calls.
+
+### 5. Audit Log & Purge History
+- All scans are tracked in `scan_audit_log`.
+- The **`Purge Inactive & Re-runs`** feature removes `SKIPPED`, `FAILED`, `TOO LONG`, and `RERUN PASSED` records to keep the UI clean while preserving all saved stock recommendations and consensus intelligence.
+
+### 6. Networking & Windows Compatibility
+- **Force IPv4 Resolution**: On Windows systems, enforce IPv4 socket resolution (`urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET`) to prevent `[WinError 10051]` unrouted IPv6 socket failures.
+- **UTF-8 Output**: Enforce UTF-8 stdout encoding in background scripts to prevent Windows cp1252 character map crashes.
 
 ---
 
-## 💻 Development Workflow
+## 💻 Development & Deployment Commands
 
-### Starting the Full-Stack Application
+### Running Locally (Backend & Frontend Server)
 ```powershell
 cd C:\Users\kumar\.gemini\antigravity-ide\scratch\yt-stock-analyzer
 .venv\Scripts\activate
@@ -89,16 +106,19 @@ npm run build
 ```
 
 ### API Endpoints Reference
-- `GET /api/recommendations` - Query stock calls with search, sentiment, channel, market filters.
+- `GET /api/recommendations` - Query stock calls with search, sentiment, channel, date filters.
 - `GET /api/consensus` - Clubbed consensus radar grouped by stock ticker.
 - `GET /api/stats` - Total picks, active channels, sentiment distribution.
-- `GET /api/channels` - List monitored channels with analyzed video counts.
-- `POST /api/channels` - Add a new creator by YouTube handle or URL.
+- `GET /api/channels` - List monitored creators with analyzed video counts.
+- `GET /api/channels/{id}/videos` - List all analyzed videos for a creator in upload date DESC order.
+- `POST /api/channels` - Add a creator by YouTube handle or Instagram URL.
 - `DELETE /api/channels/{id}` - Remove a creator from monitoring.
-- `POST /api/scan` - Enqueue videos from a target URL with depth limit.
+- `POST /api/scan` - Enqueue videos from a target creator or single video.
 - `POST /api/scan-all` - Enqueue batch scan across all enabled creators.
 - `GET /api/scan/status` - Live polling status for the sequential worker.
 - `POST /api/queue/clear` - Stop active scan and clear queue.
-- `GET /api/auth/youtube/login` - Start Google OAuth flow for YouTube subscriptions.
-- `POST /api/auth/youtube/sync` - Sync YouTube subscriptions into monitored channels.
+- `GET /api/scan/settings` & `POST /api/scan/settings` - Configure AI model priority cascade and queue cooldown.
+- `GET /api/scan/audit` - Get paginated scan audit logs and pass/fail summary metrics.
+- `POST /api/scan/audit/purge` - Purge skipped, failed, too-long, and re-run history entries.
+- `GET /api/auth/youtube/login` & `POST /api/auth/youtube/sync` - Live YouTube subscription OAuth sync.
 
