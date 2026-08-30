@@ -160,7 +160,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
     );
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, item = null) => {
     switch (status?.toUpperCase()) {
       case 'PROCESSING':
         return (
