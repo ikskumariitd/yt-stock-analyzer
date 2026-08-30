@@ -297,6 +297,17 @@ def remove_channel(channel_id: int):
     return {"success": True, "message": "Channel removed successfully."}
 
 
+@app.get("/api/channels/{channel_id}/videos")
+def get_creator_videos(channel_id: int):
+    """Retrieves all tracked videos/reels for a specific creator ordered by upload date DESC."""
+    videos = db.get_channel_videos(channel_id)
+    return {
+        "channel_id": channel_id,
+        "count": len(videos),
+        "videos": videos
+    }
+
+
 
 def get_request_base_url(request: Request) -> str:
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme or "http"

@@ -214,6 +214,46 @@ def get_channels() -> List[Dict[str, Any]]:
         return [dict(row) for row in cursor.fetchall()]
 
 
+def get_channel_videos(channel_db_id: int) -> List[Dict[str, Any]]:
+    """
+    Returns all videos tracked for a specific channel/creator in descending order of upload date (published_at DESC).
+    """
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, handle, url, platform, channel_id FROM channels WHERE id = ?", (channel_db_id,))
+        ch = cursor.fetchone()
+        if not ch:
+            return []
+
+        ch_name = ch["name"]
+        ch_handle = ch["handle"] or ""
+        ch_yt_id = ch["channel_id"] or ""
+        ch_url = ch["url"]
+        platform = ch["platform"]
+
+        cursor.execute("""
+        SELECT v.video_id, v.channel_id, v.channel_name, v.title, v.video_url, v.published_at, v.platform,
+               v.market_outlook, v.summary_text, v.processed_at,
+               (SELECT json_group_array(json_object('ticker', r.ticker, 'sentiment', r.sentiment, 'company_name', r.company_name, 'target_price', r.target_price))
+                FROM recommendations r WHERE r.video_id = v.video_id) as recommendations_json
+        FROM videos v
+        WHERE (v.channel_id IS NOT NULL AND v.channel_id != '' AND v.channel_id = ?)
+           OR LOWER(TRIM(REPLACE(v.channel_name, '@', ''))) = LOWER(TRIM(REPLACE(?, '@', '')))
+           OR LOWER(TRIM(REPLACE(v.channel_name, '@', ''))) = LOWER(TRIM(REPLACE(?, '@', '')))
+           OR (? = 'instagram' AND LOWER(?) LIKE '%' || LOWER(TRIM(REPLACE(v.channel_name, '@', ''))) || '%')
+        ORDER BY 
+            CASE WHEN v.published_at IS NOT NULL AND v.published_at != '' THEN v.published_at ELSE v.processed_at END DESC
+        """, (ch_yt_id, ch_name, ch_handle, platform, ch_url))
+
+        rows = []
+        for r in cursor.fetchall():
+            item = dict(r)
+            try:
+                item["recommendations"] = json.loads(item.get("recommendations_json") or "[]")
+            except Exception:
+                item["recommendations"] = []
+            rows.append(item)
+        return rows
 
 
 def delete_channel(channel_id: int):

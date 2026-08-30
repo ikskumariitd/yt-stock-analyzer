@@ -69,6 +69,12 @@ export async function deleteChannel(channelId) {
   return res.json();
 }
 
+export async function fetchChannelVideos(channelId) {
+  const res = await fetch(`${API_BASE}/channels/${channelId}/videos`);
+  if (!res.ok) throw new Error('Failed to fetch creator videos');
+  return res.json();
+}
+
 
 export async function triggerScan(target, limit = 2, afterDate = '') {
   const res = await fetch(`${API_BASE}/scan`, {

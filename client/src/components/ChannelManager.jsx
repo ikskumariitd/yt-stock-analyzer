@@ -18,7 +18,10 @@ import {
   Bot,
   SlidersHorizontal,
   Zap,
-  Brain
+  Brain,
+  ChevronDown,
+  ChevronUp,
+  Film
 } from 'lucide-react';
 import {
   addChannel,
@@ -27,7 +30,8 @@ import {
   triggerScan,
   triggerScanAll,
   fetchYoutubeAuthStatus,
-  syncLiveYoutubeSubscriptions
+  syncLiveYoutubeSubscriptions,
+  fetchChannelVideos
 } from '../api';
 import { formatSingaporeDateTime, formatSingaporeDate } from '../utils/timeUtils';
 
@@ -37,6 +41,9 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
   const [scanLimit, setScanLimit] = useState(2);
   const [scanAfterDate, setScanAfterDate] = useState('');
   const [cooldownSeconds, setCooldownSeconds] = useState(3600); // 60 mins default
+  const [expandedChannelId, setExpandedChannelId] = useState(null);
+  const [channelVideos, setChannelVideos] = useState({});
+  const [loadingVideos, setLoadingVideos] = useState({});
   const [modelCascade, setModelCascade] = useState([
     'gemini-3.5-flash-lite',
     'gemini-3.6-flash',
@@ -222,6 +229,26 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
       alert(`Enqueued up to ${limit} videos${dateMsg} from "${ch.name}" for sequential scan (already analyzed videos will skip automatically)!`);
     } catch (err) {
       alert(err.message);
+    }
+  };
+
+  const handleToggleVideos = async (channelId) => {
+    if (expandedChannelId === channelId) {
+      setExpandedChannelId(null);
+      return;
+    }
+
+    setExpandedChannelId(channelId);
+    if (!channelVideos[channelId]) {
+      setLoadingVideos(prev => ({ ...prev, [channelId]: true }));
+      try {
+        const data = await fetchChannelVideos(channelId);
+        setChannelVideos(prev => ({ ...prev, [channelId]: data.videos || [] }));
+      } catch (err) {
+        console.error('Failed to fetch videos for creator:', err);
+      } finally {
+        setLoadingVideos(prev => ({ ...prev, [channelId]: false }));
+      }
     }
   };
 
@@ -949,17 +976,30 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
 
                 {/* Tracked Videos & Picks Stats */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
-                  <span style={{
-                    fontSize: '0.75rem',
-                    background: 'rgba(99, 102, 241, 0.1)',
-                    border: '1px solid rgba(99, 102, 241, 0.25)',
-                    color: 'var(--color-brand)',
-                    padding: '2px 8px',
-                    borderRadius: '6px',
-                    fontWeight: '700'
-                  }}>
-                    🎬 {ch.analyzed_videos_count || 0} Videos Tracked
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleVideos(ch.id)}
+                    title="Click to view all tracked videos for this creator in descending order of upload date"
+                    style={{
+                      fontSize: '0.75rem',
+                      background: expandedChannelId === ch.id ? 'var(--color-brand)' : 'rgba(99, 102, 241, 0.1)',
+                      border: expandedChannelId === ch.id ? '1px solid var(--color-brand)' : '1px solid rgba(99, 102, 241, 0.25)',
+                      color: expandedChannelId === ch.id ? '#ffffff' : 'var(--color-brand)',
+                      padding: '3px 10px',
+                      borderRadius: '6px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Film size={12} />
+                    {ch.analyzed_videos_count || 0} Videos Tracked
+                    {expandedChannelId === ch.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+
                   <span style={{
                     fontSize: '0.75rem',
                     background: 'var(--color-buy-bg)',
@@ -1076,6 +1116,149 @@ export default function ChannelManager({ channels = [], onRefresh, onTriggerScan
                 <Trash2 size={14} />
               </button>
             </div>
+
+            {/* Expanded Tracked Videos Drawer */}
+            {expandedChannelId === ch.id && (
+              <div style={{
+                width: '100%',
+                marginTop: '14px',
+                padding: '16px 18px',
+                background: 'var(--bg-card-subtle)',
+                border: '1px solid rgba(99, 102, 241, 0.25)',
+                borderRadius: '12px',
+                boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.03)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Film size={15} color="var(--color-brand)" />
+                    <span style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--text-primary)' }}>
+                      Tracked Videos & Reels for {ch.name}
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border-subtle)' }}>
+                      📅 Sorted by Upload Date (DESC)
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setExpandedChannelId(null)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      padding: '2px',
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+
+                {loadingVideos[ch.id] ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                    <RefreshCw size={18} className="animate-spin" style={{ margin: '0 auto 8px' }} />
+                    Loading tracked videos...
+                  </div>
+                ) : !channelVideos[ch.id] || channelVideos[ch.id].length === 0 ? (
+                  <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                    No analyzed videos found for this creator yet. Click <strong>"Scan Channel"</strong> above to ingest recent videos.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {channelVideos[ch.id].map((v, idx) => (
+                      <div
+                        key={v.video_id || idx}
+                        style={{
+                          background: 'var(--bg-card)',
+                          border: '1px solid var(--border-subtle)',
+                          borderRadius: '10px',
+                          padding: '12px 14px',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '12px'
+                        }}
+                      >
+                        <div style={{ flex: '1 1 340px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <a
+                              href={v.video_url || (v.platform === 'instagram' ? `https://www.instagram.com/reel/${v.video_id.replace('ig_', '')}/` : `https://www.youtube.com/watch?v=${v.video_id}`)}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                color: 'var(--text-primary)',
+                                fontWeight: '700',
+                                fontSize: '0.85rem',
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}
+                              onMouseEnter={(e) => e.target.style.color = 'var(--color-brand)'}
+                              onMouseLeave={(e) => e.target.style.color = 'var(--text-primary)'}
+                            >
+                              {v.title}
+                              <ExternalLink size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+                            </a>
+                          </div>
+
+                          {/* Upload Date & Processed Meta */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '6px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '600' }}>
+                              📅 Uploaded: {v.published_at ? formatSingaporeDate(v.published_at) : 'Date Unknown'}
+                            </span>
+                            {v.platform === 'instagram' ? (
+                              <span style={{ color: '#ec4899', fontWeight: '700' }}>📷 Instagram Reel</span>
+                            ) : (
+                              <span style={{ color: '#ef4444', fontWeight: '700' }}>🔴 YouTube</span>
+                            )}
+                          </div>
+
+                          {/* Summary Excerpt if available */}
+                          {v.summary_text && (
+                            <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                              {v.summary_text.substring(0, 180)}{v.summary_text.length > 180 ? '...' : ''}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Extracted Stock Calls / Tickers */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', maxWidth: '320px' }}>
+                          {v.recommendations && v.recommendations.length > 0 ? (
+                            v.recommendations.map((rec, rIdx) => {
+                              const isBuy = rec.sentiment?.includes('BUY') || rec.sentiment?.includes('ACCUMULATE');
+                              const isSell = rec.sentiment?.includes('SELL') || rec.sentiment?.includes('AVOID');
+                              return (
+                                <span
+                                  key={rIdx}
+                                  style={{
+                                    fontSize: '0.72rem',
+                                    fontWeight: '800',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    background: isBuy ? 'var(--tag-buy-bg, rgba(16, 185, 129, 0.12))' : (isSell ? 'var(--tag-sell-bg, rgba(239, 68, 68, 0.12))' : 'var(--tag-hold-bg, rgba(245, 158, 11, 0.12))'),
+                                    color: isBuy ? 'var(--tag-buy-text, #059669)' : (isSell ? 'var(--tag-sell-text, #dc2626)' : 'var(--tag-hold-text, #d97706)'),
+                                    border: `1px solid ${isBuy ? 'rgba(16, 185, 129, 0.25)' : (isSell ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)')}`
+                                  }}
+                                  title={`${rec.company_name || rec.ticker}: ${rec.sentiment}${rec.price_target ? ` | Target: $${rec.price_target}` : ''}`}
+                                >
+                                  {rec.ticker} • {rec.sentiment}
+                                </span>
+                              );
+                            })
+                          ) : (
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                              Macro commentary / No tickers
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         );
         })}
