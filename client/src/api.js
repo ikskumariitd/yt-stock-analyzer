@@ -136,7 +136,7 @@ export async function rescanVideo({ videoId, url, channelName, title, platform }
   return res.json();
 }
 
-export async function purgeAuditLogs(statuses = ['SKIPPED', 'FAILED', 'TOO LONG']) {
+export async function purgeAuditLogs(statuses = ['SKIPPED', 'FAILED', 'FAIL', 'TOO LONG', 'TOO_LONG', 'RERUN PASSED', 'RERUN_PASSED', 'PASSED (RERUN)']) {
   const res = await fetch(`${API_BASE}/scan/audit/purge`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

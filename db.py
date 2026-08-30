@@ -754,11 +754,11 @@ def set_model_cascade(models: List[str]):
 
 def purge_audit_logs(statuses: Optional[List[str]] = None) -> int:
     """
-    Purges scan_audit_log entries matching specific statuses (default: SKIPPED, FAILED, FAIL, TOO LONG, TOO_LONG).
+    Purges scan_audit_log entries matching specific statuses (default: SKIPPED, FAILED, FAIL, TOO LONG, TOO_LONG, RERUN PASSED, RERUN_PASSED).
     Returns the count of rows deleted.
     """
     if not statuses:
-        statuses = ["SKIPPED", "FAILED", "FAIL", "TOO LONG", "TOO_LONG"]
+        statuses = ["SKIPPED", "FAILED", "FAIL", "TOO LONG", "TOO_LONG", "RERUN PASSED", "RERUN_PASSED", "PASSED (RERUN)"]
     
     with get_connection() as conn:
         cursor = conn.cursor()

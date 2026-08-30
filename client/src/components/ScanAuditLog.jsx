@@ -47,13 +47,13 @@ export default function ScanAuditLog({ onRescanTriggered }) {
   const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
 
   const handlePurge = async () => {
-    const confirmMsg = 'Are you sure you want to purge all Skipped, Failed, and Too-Long scan logs? This will permanently clean up your audit history while keeping all successful stock recommendations.';
+    const confirmMsg = 'Are you sure you want to purge all Skipped, Failed, Too-Long, and Re-Run scan logs? This will permanently clean up your audit history while keeping all latest stock recommendations intact.';
     if (!window.confirm(confirmMsg)) return;
 
     setPurging(true);
     try {
-      const res = await purgeAuditLogs(['SKIPPED', 'FAILED', 'FAIL', 'TOO LONG', 'TOO_LONG']);
-      setActionMsg(`🧹 Successfully purged ${res.deleted_count} skipped/failed log entries!`);
+      const res = await purgeAuditLogs(['SKIPPED', 'FAILED', 'FAIL', 'TOO LONG', 'TOO_LONG', 'RERUN PASSED', 'RERUN_PASSED', 'PASSED (RERUN)']);
+      setActionMsg(`🧹 Successfully purged ${res.deleted_count} skipped, failed & re-run logs!`);
       setTimeout(() => setActionMsg(null), 4000);
       await loadAuditLogs(true);
     } catch (err) {
@@ -627,11 +627,11 @@ export default function ScanAuditLog({ onRescanTriggered }) {
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
           </button>
 
-          {/* Purge Skipped & Failed Button */}
+          {/* Purge Skipped, Failed & Re-runs Button */}
           <button
             onClick={handlePurge}
-            disabled={purging || (auditData.failed === 0 && auditData.skipped === 0)}
-            title="Purge all Skipped, Failed, and Too-Long history logs to keep UI clean"
+            disabled={purging || (auditData.total === 0)}
+            title="Purge all Skipped, Failed, Too-Long, and Re-Run history logs to keep UI clean"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -643,13 +643,13 @@ export default function ScanAuditLog({ onRescanTriggered }) {
               color: '#ef4444',
               fontSize: '0.75rem',
               fontWeight: '700',
-              cursor: purging || (auditData.failed === 0 && auditData.skipped === 0) ? 'not-allowed' : 'pointer',
-              opacity: purging || (auditData.failed === 0 && auditData.skipped === 0) ? 0.45 : 1,
+              cursor: purging || (auditData.total === 0) ? 'not-allowed' : 'pointer',
+              opacity: purging || (auditData.total === 0) ? 0.45 : 1,
               marginLeft: '6px',
               transition: 'all 0.2s ease'
             }}
             onMouseEnter={(e) => {
-              if (!purging && (auditData.failed > 0 || auditData.skipped > 0)) {
+              if (!purging && auditData.total > 0) {
                 e.currentTarget.style.background = '#ef4444';
                 e.currentTarget.style.color = '#ffffff';
               }
@@ -660,7 +660,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
             }}
           >
             <Trash2 size={13} className={purging ? 'spin' : ''} />
-            {purging ? 'Purging...' : 'Purge Skipped & Failed'}
+            {purging ? 'Purging...' : 'Purge Inactive & Re-runs'}
           </button>
         </div>
       </div>
