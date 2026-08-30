@@ -3,6 +3,7 @@ import { Search, Filter, X, Calendar, ArrowUpDown } from 'lucide-react';
 
 const SENTIMENT_OPTIONS = [
   { id: 'ALL', label: 'All Stances' },
+  { id: 'STRONG_BUY', label: '🚀 Strong Buy' },
   { id: 'BUY', label: '🟢 Buy' },
   { id: 'ACCUMULATE', label: '🔵 Accumulate' },
   { id: 'WATCHLIST', label: '🟡 Watchlist' },

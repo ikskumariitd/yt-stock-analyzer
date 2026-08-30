@@ -383,8 +383,20 @@ def query_recommendations(
             params.append(ticker.upper())
 
         if sentiment and sentiment.upper() != "ALL":
-            query += " AND sentiment = ?"
-            params.append(sentiment.upper())
+            sent_upper = sentiment.upper().replace(" ", "_")
+            if sent_upper in ["SELL", "AVOID"]:
+                query += " AND sentiment IN ('SELL', 'AVOID')"
+            elif sent_upper in ["WATCHLIST", "HOLD"]:
+                query += " AND sentiment IN ('WATCHLIST', 'HOLD')"
+            elif sent_upper in ["STRONG_BUY", "STRONGBUY"]:
+                query += " AND sentiment = 'STRONG_BUY'"
+            elif sent_upper == "BUY":
+                query += " AND sentiment = 'BUY'"
+            elif sent_upper == "ACCUMULATE":
+                query += " AND sentiment = 'ACCUMULATE'"
+            else:
+                query += " AND sentiment = ?"
+                params.append(sentiment.upper())
 
         if channel_name and channel_name.upper() != "ALL":
             query += " AND (LOWER(TRIM(REPLACE(channel_name, '@', ''))) = LOWER(TRIM(REPLACE(?, '@', ''))))"
