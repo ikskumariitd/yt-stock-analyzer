@@ -612,6 +612,22 @@ class RescanRequest(BaseModel):
     platform: Optional[str] = "youtube"
 
 
+class PurgeAuditRequest(BaseModel):
+    statuses: Optional[List[str]] = None
+
+
+@app.post("/api/scan/audit/purge")
+async def purge_audit_logs(req: Optional[PurgeAuditRequest] = None):
+    """Purges skipped, failed, and too-long audit records to keep UI clean."""
+    statuses = req.statuses if req else None
+    deleted_count = await asyncio.to_thread(db.purge_audit_logs, statuses)
+    return {
+        "success": True,
+        "deleted_count": deleted_count,
+        "message": f"Successfully purged {deleted_count} skipped/failed audit logs."
+    }
+
+
 @app.post("/api/scan/rescan")
 async def trigger_rescan(req: RescanRequest):
     """Forces re-scanning of a specific video or reel."""

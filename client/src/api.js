@@ -136,6 +136,16 @@ export async function rescanVideo({ videoId, url, channelName, title, platform }
   return res.json();
 }
 
+export async function purgeAuditLogs(statuses = ['SKIPPED', 'FAILED', 'TOO LONG']) {
+  const res = await fetch(`${API_BASE}/scan/audit/purge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ statuses })
+  });
+  if (!res.ok) throw new Error('Failed to purge audit logs');
+  return res.json();
+}
+
 
 export async function fetchYoutubeAuthStatus() {
   const res = await fetch(`${API_BASE}/auth/youtube/status`);

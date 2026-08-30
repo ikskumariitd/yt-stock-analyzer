@@ -18,9 +18,10 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Sparkles
+  Sparkles,
+  Trash2
 } from 'lucide-react';
-import { fetchScanAudit, rescanVideo } from '../api';
+import { fetchScanAudit, rescanVideo, purgeAuditLogs } from '../api';
 import { formatSingaporeAuditTime, formatSingaporeDate, parseUtcDate } from '../utils/timeUtils';
 
 export default function ScanAuditLog({ onRescanTriggered }) {
@@ -39,10 +40,28 @@ export default function ScanAuditLog({ onRescanTriggered }) {
   const [platformFilter, setPlatformFilter] = useState('ALL');
   const [rescanningId, setRescanningId] = useState(null);
   const [actionMsg, setActionMsg] = useState(null);
+  const [purging, setPurging] = useState(false);
 
   // Sorting state: Default Scan Time DESC
   const [sortField, setSortField] = useState('scanned_at');
   const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+
+  const handlePurge = async () => {
+    const confirmMsg = 'Are you sure you want to purge all Skipped, Failed, and Too-Long scan logs? This will permanently clean up your audit history while keeping all successful stock recommendations.';
+    if (!window.confirm(confirmMsg)) return;
+
+    setPurging(true);
+    try {
+      const res = await purgeAuditLogs(['SKIPPED', 'FAILED', 'FAIL', 'TOO LONG', 'TOO_LONG']);
+      setActionMsg(`🧹 Successfully purged ${res.deleted_count} skipped/failed log entries!`);
+      setTimeout(() => setActionMsg(null), 4000);
+      await loadAuditLogs(true);
+    } catch (err) {
+      alert(`Purge failed: ${err.message}`);
+    } finally {
+      setPurging(false);
+    }
+  };
 
   const loadAuditLogs = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
@@ -606,6 +625,42 @@ export default function ScanAuditLog({ onRescanTriggered }) {
             }}
           >
             <RefreshCw size={14} className={loading ? 'spin' : ''} />
+          </button>
+
+          {/* Purge Skipped & Failed Button */}
+          <button
+            onClick={handlePurge}
+            disabled={purging || (auditData.failed === 0 && auditData.skipped === 0)}
+            title="Purge all Skipped, Failed, and Too-Long history logs to keep UI clean"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '7px 12px',
+              borderRadius: '8px',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              background: 'rgba(239, 68, 68, 0.08)',
+              color: '#ef4444',
+              fontSize: '0.75rem',
+              fontWeight: '700',
+              cursor: purging || (auditData.failed === 0 && auditData.skipped === 0) ? 'not-allowed' : 'pointer',
+              opacity: purging || (auditData.failed === 0 && auditData.skipped === 0) ? 0.45 : 1,
+              marginLeft: '6px',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              if (!purging && (auditData.failed > 0 || auditData.skipped > 0)) {
+                e.currentTarget.style.background = '#ef4444';
+                e.currentTarget.style.color = '#ffffff';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+              e.currentTarget.style.color = '#ef4444';
+            }}
+          >
+            <Trash2 size={13} className={purging ? 'spin' : ''} />
+            {purging ? 'Purging...' : 'Purge Skipped & Failed'}
           </button>
         </div>
       </div>

@@ -752,5 +752,25 @@ def set_model_cascade(models: List[str]):
     set_setting("gemini_model_cascade", json.dumps(models))
 
 
+def purge_audit_logs(statuses: Optional[List[str]] = None) -> int:
+    """
+    Purges scan_audit_log entries matching specific statuses (default: SKIPPED, FAILED, FAIL, TOO LONG, TOO_LONG).
+    Returns the count of rows deleted.
+    """
+    if not statuses:
+        statuses = ["SKIPPED", "FAILED", "FAIL", "TOO LONG", "TOO_LONG"]
+    
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        placeholders = ", ".join(["?"] * len(statuses))
+        cursor.execute(
+            f"DELETE FROM scan_audit_log WHERE UPPER(status) IN ({placeholders})",
+            [s.upper() for s in statuses]
+        )
+        deleted_count = cursor.rowcount
+        conn.commit()
+        return deleted_count
+
+
 # Initialize DB on load
 init_db()
