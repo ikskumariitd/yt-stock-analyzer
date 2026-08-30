@@ -233,6 +233,28 @@ export default function ScanAuditLog({ onRescanTriggered }) {
             <RotateCcw size={12} /> RERUN PASSED
           </span>
         );
+      case 'TOO LONG':
+      case 'TOO_LONG': {
+        const timeMatch = item?.error_message?.match(/Video length:\s*([^\s(]+(?:\s+[^\s(]+)?)/i) || 
+                          item?.error_message?.match(/duration:\s*([^\s(]+(?:\s+[^\s(]+)?)/i);
+        const durText = timeMatch ? ` (${timeMatch[1]})` : '';
+        return (
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px',
+            padding: '4px 10px',
+            borderRadius: '12px',
+            fontSize: '0.75rem',
+            fontWeight: '700',
+            background: 'rgba(245, 158, 11, 0.12)',
+            color: '#d97706',
+            border: '1px solid rgba(245, 158, 11, 0.3)'
+          }} title={item?.error_message || 'Video exceeds 1 hour limit'}>
+            <Clock size={12} /> TOO LONG{durText}
+          </span>
+        );
+      }
       case 'FAILED':
       case 'FAIL':
         return (
@@ -901,7 +923,7 @@ export default function ScanAuditLog({ onRescanTriggered }) {
 
                     {/* Status */}
                     <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
-                      {getStatusBadge(item.status)}
+                      {getStatusBadge(item.status, item)}
                     </td>
 
                     {/* Actions (Placed right after Status) */}

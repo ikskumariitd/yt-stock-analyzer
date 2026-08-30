@@ -56,6 +56,36 @@ def format_seconds(seconds: float) -> str:
     return f"{minutes:02d}:{sec:02d}"
 
 
+def format_duration_readable(seconds: float) -> str:
+    """Formats seconds into human-readable duration e.g. '2h 15m' or '45m'."""
+    s = int(seconds)
+    hours = s // 3600
+    minutes = (s % 3600) // 60
+    sec = s % 60
+    if hours > 0:
+        return f"{hours}h {minutes:02d}m"
+    if minutes > 0:
+        return f"{minutes}m {sec:02d}s"
+    return f"{sec}s"
+
+
+def get_youtube_video_duration(video_id: str) -> Optional[float]:
+    """Fast pre-check of YouTube video duration in seconds using yt-dlp flat metadata."""
+    try:
+        import yt_dlp
+        ydl_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'skip_download': True,
+            'extract_flat': True,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            return info.get("duration")
+    except Exception:
+        return None
+
+
 def get_video_transcript(video_id: str, preferred_languages: List[str] = None) -> Dict[str, Any]:
     """
     Fetch transcript using youtube-transcript-api.
@@ -149,6 +179,17 @@ def get_video_transcript(video_id: str, preferred_languages: List[str] = None) -
         print(f"[FALLBACK] YouTubeTranscriptApi unavailable for {video_id} ({err_msg[:60]}...). Attempting Gemini Audio Fallback with yt-dlp...")
         
         audio_info = download_youtube_audio_fallback(video_id)
+        if audio_info and audio_info.get("too_long"):
+            return {
+                "success": False,
+                "video_id": video_id,
+                "title": audio_info.get("title") or metadata.get("title"),
+                "author": audio_info.get("author") or metadata.get("author"),
+                "too_long": True,
+                "duration_formatted": audio_info.get("duration_formatted", "1h+"),
+                "error": f"Video length: {audio_info.get('duration_formatted', '1h+')} (exceeds 1-hour limit)",
+            }
+
         if audio_info and audio_info.get("audio_path"):
             return {
                 "success": True,
@@ -191,12 +232,28 @@ def download_youtube_audio_fallback(video_id: str) -> Optional[Dict[str, Any]]:
             'overwrites': True
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # Check duration first without downloading full audio
+            info_pre = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            dur = info_pre.get("duration") or 0
+            if dur > 3600:
+                dur_str = format_duration_readable(dur)
+                print(f"⏱️ Video {video_id} is {dur_str} (> 1 hour). Skipping audio download.")
+                return {
+                    "too_long": True,
+                    "duration_formatted": dur_str,
+                    "duration": dur,
+                    "title": info_pre.get("title"),
+                    "author": info_pre.get("uploader") or info_pre.get("channel"),
+                    "published_at": info_pre.get("upload_date")
+                }
+
             info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=True)
             return {
                 "audio_path": audio_path,
                 "title": info.get("title"),
                 "author": info.get("uploader") or info.get("channel"),
-                "published_at": info.get("upload_date")
+                "published_at": info.get("upload_date"),
+                "duration": dur
             }
     except Exception as dl_err:
         print(f"yt-dlp fallback download failed: {dl_err}")

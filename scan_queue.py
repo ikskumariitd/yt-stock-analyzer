@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field, asdict
 
 import db
-from transcript_extractor import get_video_transcript
+from transcript_extractor import get_video_transcript, get_youtube_video_duration, format_duration_readable
 from instagram_extractor import extract_instagram_post_metadata_and_audio
 from analyzer import analyze_transcript_with_gemini, analyze_instagram_media_with_gemini
 
@@ -154,6 +154,33 @@ class SequentialScanQueue:
                     await asyncio.sleep(0.3)
                     continue
 
+                # 2. Fast Duration Pre-Check (> 1 hour limit)
+                if item.platform == "youtube":
+                    dur_sec = await asyncio.to_thread(get_youtube_video_duration, item.video_id)
+                    if dur_sec and dur_sec > 3600:
+                        dur_str = format_duration_readable(dur_sec)
+                        item.status = "TOO LONG"
+                        item.finished_at = time.time()
+                        self._completed_in_batch += 1
+                        self.log(f"⏱️ [Skipped - Video Too Long]: '{item.title}' is {dur_str} (> 1 hour limit). Skipping...")
+                        
+                        v_url = item.raw_url or f"https://www.youtube.com/watch?v={item.video_id}"
+                        await asyncio.to_thread(
+                            db.log_scan_audit,
+                            video_id=item.video_id,
+                            channel_name=item.channel_name,
+                            title=item.title,
+                            video_url=v_url,
+                            platform="youtube",
+                            published_at=item.published_at,
+                            status="TOO LONG",
+                            error_message=f"Video length: {dur_str} (exceeds 1-hour limit)",
+                            duration_seconds=0
+                        )
+                        self._current_item = None
+                        await asyncio.sleep(0.3)
+                        continue
+
                 self.log(f"⏳ Processing [{self._completed_in_batch + 1}/{self._total_batch_size}]: '{item.title}'...")
                 item_start_time = time.time()
                 
@@ -199,6 +226,28 @@ class SequentialScanQueue:
                             # YouTube Video extraction
                             t_data = await asyncio.to_thread(get_video_transcript, item.video_id)
                             if not t_data.get("success"):
+                                if t_data.get("too_long"):
+                                    dur_str = t_data.get("duration_formatted", "1h+")
+                                    item.status = "TOO LONG"
+                                    item.finished_at = time.time()
+                                    self._completed_in_batch += 1
+                                    self.log(f"⏱️ [Skipped - Video Too Long]: '{item.title}' is {dur_str} (> 1 hour limit). Skipping...")
+                                    
+                                    v_url = f"https://www.youtube.com/watch?v={item.video_id}"
+                                    await asyncio.to_thread(
+                                        db.log_scan_audit,
+                                        video_id=item.video_id,
+                                        channel_name=item.channel_name or t_data.get("author", "YouTube Creator"),
+                                        title=item.title or t_data.get("title", f"Video {item.video_id}"),
+                                        video_url=v_url,
+                                        platform="youtube",
+                                        published_at=item.published_at,
+                                        status="TOO LONG",
+                                        error_message=f"Video length: {dur_str} (exceeds 1-hour limit)",
+                                        duration_seconds=0
+                                    )
+                                    success = True
+                                    break
                                 raise RuntimeError(t_data.get("error", "No transcript available"))
 
                             ch_name = item.channel_name or t_data.get("author", "YouTube Creator")
