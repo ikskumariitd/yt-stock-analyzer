@@ -21,6 +21,17 @@
 
 ---
 
+## 🌐 Production Deployment
+
+**Live URL:** _TODO: add prod URL here_
+
+Deployed on Google Cloud Run (see `deploy_cloudrun.ps1`). Fetch the live URL with:
+```bash
+gcloud run services describe alphapulse-stocks --region us-central1 --format='value(status.url)'
+```
+
+---
+
 ## 🛠️ Quick Start Guide
 
 ### 1. Clone & Setup Python Virtual Environment
