@@ -154,7 +154,28 @@ def init_db():
               SELECT video_id FROM scan_audit_log WHERE status = 'SUCCESS'
           );
         """)
-        conn.commit()
+        # Seed default channels from channels.json if channels table is empty
+        cursor.execute("SELECT COUNT(*) FROM channels")
+        if cursor.fetchone()[0] == 0:
+            channels_json_path = Path("channels.json")
+            if channels_json_path.exists():
+                try:
+                    default_channels = json.loads(channels_json_path.read_text(encoding="utf-8"))
+                    for ch in default_channels:
+                        cursor.execute("""
+                        INSERT OR IGNORE INTO channels (name, url, handle, channel_id, platform, enabled)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """, (
+                            ch.get("name", "Channel"),
+                            ch.get("url", ""),
+                            ch.get("handle"),
+                            ch.get("channel_id"),
+                            ch.get("platform", "youtube"),
+                            1 if ch.get("enabled", True) else 0
+                        ))
+                    conn.commit()
+                except Exception as seed_err:
+                    print(f"Initial channel seed error: {seed_err}")
 
 
 

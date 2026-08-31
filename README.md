@@ -23,12 +23,19 @@
 
 ## 🌐 Production Deployment
 
-**Live URL:** _TODO: add prod URL here_
+**Live URL:** **[`https://stock-analyzer-641888119120.us-central1.run.app`](https://stock-analyzer-641888119120.us-central1.run.app)** *(Alias: [`https://stock-analyzer-gm63e6w5rq-uc.a.run.app`](https://stock-analyzer-gm63e6w5rq-uc.a.run.app))*
 
-Deployed on Google Cloud Run (see `deploy_cloudrun.ps1`). Fetch the live URL with:
+Deployed on Google Cloud Run (see [`deploy_cloudrun.ps1`](file:///d:/Technical/AI/projects/yt-stock-analyzer/deploy_cloudrun.ps1)). Fetch the live URL with:
 ```bash
-gcloud run services describe alphapulse-stocks --region us-central1 --format='value(status.url)'
+gcloud run services describe stock-analyzer --region us-central1 --format='value(status.url)'
 ```
+
+### 🛡️ YouTube Anti-Bot & IP Block Prevention (Cloud Run / VPS)
+Cloud datacenter IPs (GCP, AWS, etc.) can be rate-limited by YouTube's BotGuard. AlphaPulse provides a 4-tier defense:
+1. **Mobile Client Spoofing**: `yt-dlp` automatically routes requests through `android`, `ios`, and `mweb` clients.
+2. **Synchronized Multimodal Audio Fallback**: Direct audio extraction passed to Gemini native multimodal understanding when web transcript APIs are throttled.
+3. **Cookie Authentication (`cookies.txt` / `YOUTUBE_COOKIES_CONTENT`)**: Place a Netscape `cookies.txt` in the root folder or set `YOUTUBE_COOKIES_CONTENT` in Secret Manager to bypass IP checks.
+4. **Proxy Support (`YOUTUBE_PROXY`)**: Set `YOUTUBE_PROXY=http://user:pass@host:port` or Webshare credentials to route requests through residential proxies.
 
 ---
 

@@ -83,7 +83,8 @@ flowchart TD
 - All scans are tracked in `scan_audit_log`.
 - The **`Purge Inactive & Re-runs`** feature removes `SKIPPED`, `FAILED`, `TOO LONG`, and `RERUN PASSED` records to keep the UI clean while preserving all saved stock recommendations and consensus intelligence.
 
-### 6. Networking & Windows Compatibility
+### 6. Networking, YouTube Anti-Bot & Cloud Compatibility
+- **YouTube Anti-Bot Hardening**: Support cookies (`cookies.txt` or `YOUTUBE_COOKIES_CONTENT`), proxies (`YOUTUBE_PROXY`), and multi-client spoofing (`android`, `ios`, `mweb`, `web_embedded`) in `transcript_extractor.py` to prevent 429 IP blocks on Cloud Run / datacenter subnets.
 - **Force IPv4 Resolution**: On Windows systems, enforce IPv4 socket resolution (`urllib3.util.connection.allowed_gai_family = lambda: socket.AF_INET`) to prevent `[WinError 10051]` unrouted IPv6 socket failures.
 - **UTF-8 Output**: Enforce UTF-8 stdout encoding in background scripts to prevent Windows cp1252 character map crashes.
 

@@ -1,0 +1,21 @@
+.gcloudignore
+.git
+.gitignore
+
+# Ignore local virtualenvs and dependencies
+.venv/
+venv/
+client/node_modules/
+__pycache__/
+*.pyc
+
+# Ignore scratch media and temp logs
+*.m4a
+*.mp3
+*.mp4
+*.log
+reports/
+scratch/
+
+# Explicitly DO NOT ignore stocks.db
+!stocks.db

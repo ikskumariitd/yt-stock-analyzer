@@ -463,6 +463,8 @@ async def get_scan_status():
 
 
 @app.post("/api/queue/clear")
+@app.delete("/api/queue/clear")
+@app.delete("/api/scan/queue")
 async def clear_scan_queue():
     scan_queue.clear_queue()
     return {"success": True, "message": "Scan queue cleared successfully."}

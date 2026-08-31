@@ -17,9 +17,11 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PORT=8080
 
-# Install system dependencies
+# Install system dependencies (nodejs for yt-dlp JS signature runtime, ffmpeg for audio extraction)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    nodejs \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy backend requirements and install
