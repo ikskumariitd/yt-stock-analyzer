@@ -1,6 +1,6 @@
 const API_BASE = '/api';
 
-export async function fetchRecommendations({ search, ticker, sentiment, channel, market, days, stanceChange, limit = 50, offset = 0 } = {}) {
+export async function fetchRecommendations({ search, ticker, sentiment, channel, market, days, stanceChange, sortBy = 'date', limit = 50, offset = 0 } = {}) {
   const params = new URLSearchParams();
   if (search) params.append('search', search);
   if (ticker) params.append('ticker', ticker);
@@ -9,6 +9,7 @@ export async function fetchRecommendations({ search, ticker, sentiment, channel,
   if (market && market !== 'ALL') params.append('market', market);
   if (days && days !== 'ALL') params.append('days', days);
   if (stanceChange && stanceChange !== 'ALL') params.append('stance_change', stanceChange);
+  if (sortBy) params.append('sort_by', sortBy);
   params.append('limit', limit);
   params.append('offset', offset);
 

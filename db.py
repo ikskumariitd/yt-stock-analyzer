@@ -154,6 +154,24 @@ def init_db():
               SELECT video_id FROM scan_audit_log WHERE status = 'SUCCESS'
           );
         """)
+
+        # Ensure all existing 8-digit published_at dates (YYYYMMDD) are migrated to standard ISO format (YYYY-MM-DD)
+        cursor.execute("""
+        UPDATE recommendations 
+        SET published_at = substr(published_at, 1, 4) || '-' || substr(published_at, 5, 2) || '-' || substr(published_at, 7, 2)
+        WHERE length(published_at) = 8 AND published_at GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
+        """)
+        cursor.execute("""
+        UPDATE videos 
+        SET published_at = substr(published_at, 1, 4) || '-' || substr(published_at, 5, 2) || '-' || substr(published_at, 7, 2)
+        WHERE length(published_at) = 8 AND published_at GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
+        """)
+        cursor.execute("""
+        UPDATE scan_audit_log 
+        SET published_at = substr(published_at, 1, 4) || '-' || substr(published_at, 5, 2) || '-' || substr(published_at, 7, 2)
+        WHERE length(published_at) = 8 AND published_at GLOB '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]';
+        """)
+
         # Seed default channels from channels.json if channels table is empty
         cursor.execute("SELECT COUNT(*) FROM channels")
         if cursor.fetchone()[0] == 0:
@@ -316,6 +334,8 @@ def save_video_analysis(
     recommendations: List[Any],
     platform: str = "youtube"
 ):
+    published_at = normalize_date_for_sort(published_at)
+
     with get_connection() as conn:
         cursor = conn.cursor()
         
@@ -498,8 +518,9 @@ def query_recommendations(
     sentiment: Optional[str] = None,
     channel_name: Optional[str] = None,
     market: Optional[str] = None,
-    days: Optional[int] = None,
+    days: Optional[Any] = None,
     stance_change: Optional[str] = None,
+    sort_by: str = "date",
     limit: int = 50,
     offset: int = 0
 ) -> Dict[str, Any]:
@@ -544,15 +565,16 @@ def query_recommendations(
 
         if days:
             days_str = str(days).strip().upper()
+            date_expr = "date(CASE WHEN length(published_at)=8 THEN substr(published_at,1,4)||'-'||substr(published_at,5,2)||'-'||substr(published_at,7,2) ELSE COALESCE(NULLIF(published_at, ''), created_at) END)"
             if days_str == "YTD":
-                query += " AND date(COALESCE(NULLIF(published_at, ''), created_at)) >= date('now', 'start of year')"
+                query += f" AND {date_expr} >= date('now', 'start of year')"
             elif days_str in ["1Y", "1 Y", "365"]:
-                query += " AND date(COALESCE(NULLIF(published_at, ''), created_at)) >= date('now', '-365 days')"
+                query += f" AND {date_expr} >= date('now', '-365 days')"
             elif days_str not in ["ALL", "MAX", "NONE", ""]:
                 try:
                     num_days = int(days_str)
                     if num_days > 0:
-                        query += " AND date(COALESCE(NULLIF(published_at, ''), created_at)) >= date('now', ?)"
+                        query += f" AND {date_expr} >= date('now', ?)"
                         params.append(f"-{num_days} days")
                 except ValueError:
                     pass
@@ -562,8 +584,27 @@ def query_recommendations(
         cursor.execute(count_query, params)
         total = cursor.fetchone()[0]
 
-        # Fetch records sorted by video date DESC
-        query += " ORDER BY COALESCE(NULLIF(published_at, ''), created_at) DESC, id DESC LIMIT ? OFFSET ?"
+        # Determine ORDER BY clause
+        if sort_by == "bullish":
+            order_clause = """ORDER BY 
+                CASE sentiment 
+                    WHEN 'STRONG_BUY' THEN 1 
+                    WHEN 'BUY' THEN 2 
+                    WHEN 'ACCUMULATE' THEN 3 
+                    WHEN 'WATCHLIST' THEN 4 
+                    WHEN 'HOLD' THEN 5 
+                    WHEN 'NEUTRAL' THEN 6 
+                    WHEN 'SELL' THEN 7 
+                    WHEN 'AVOID' THEN 8 
+                    ELSE 9 
+                END ASC, 
+                COALESCE(NULLIF(published_at, ''), created_at) DESC, id DESC"""
+        elif sort_by == "ticker":
+            order_clause = "ORDER BY ticker ASC, COALESCE(NULLIF(published_at, ''), created_at) DESC, id DESC"
+        else:  # 'date' or 'mentions' for feed mode
+            order_clause = "ORDER BY COALESCE(NULLIF(published_at, ''), created_at) DESC, id DESC"
+
+        query += f" {order_clause} LIMIT ? OFFSET ?"
         params.extend([limit, offset])
 
         cursor.execute(query, params)

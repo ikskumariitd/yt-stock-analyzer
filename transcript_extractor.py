@@ -371,6 +371,15 @@ def get_video_transcript(video_id: str, preferred_languages: List[str] = None) -
         }
 
 
+def format_upload_date(d_str: Optional[str]) -> Optional[str]:
+    if not d_str:
+        return None
+    s = str(d_str).strip()
+    if len(s) == 8 and s.isdigit():
+        return f"{s[:4]}-{s[4:6]}-{s[6:8]}"
+    return s
+
+
 def download_youtube_audio_fallback(video_id: str) -> Optional[Dict[str, Any]]:
     """
     Downloads lightweight audio stream with yt-dlp when YouTube Transcript API is blocked.
@@ -406,7 +415,7 @@ def download_youtube_audio_fallback(video_id: str) -> Optional[Dict[str, Any]]:
                         "duration": dur,
                         "title": info_pre.get("title") if info_pre else None,
                         "author": (info_pre.get("uploader") or info_pre.get("channel")) if info_pre else None,
-                        "published_at": info_pre.get("upload_date") if info_pre else None
+                        "published_at": format_upload_date(info_pre.get("upload_date") if info_pre else None)
                     }
 
                 info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=True)
@@ -415,7 +424,7 @@ def download_youtube_audio_fallback(video_id: str) -> Optional[Dict[str, Any]]:
                         "audio_path": audio_path,
                         "title": info.get("title"),
                         "author": info.get("uploader") or info.get("channel"),
-                        "published_at": info.get("upload_date"),
+                        "published_at": format_upload_date(info.get("upload_date")),
                         "duration": info.get("duration") or dur
                     }
         except Exception as san_err:
@@ -448,7 +457,7 @@ def download_youtube_audio_fallback(video_id: str) -> Optional[Dict[str, Any]]:
                         "audio_path": audio_path,
                         "title": info.get("title"),
                         "author": info.get("uploader") or info.get("channel"),
-                        "published_at": info.get("upload_date"),
+                        "published_at": format_upload_date(info.get("upload_date")),
                         "duration": info.get("duration") or 0
                     }
         except Exception as android_err:
@@ -477,7 +486,7 @@ def download_youtube_audio_fallback(video_id: str) -> Optional[Dict[str, Any]]:
                         "audio_path": audio_path,
                         "title": info.get("title"),
                         "author": info.get("uploader") or info.get("channel"),
-                        "published_at": info.get("upload_date"),
+                        "published_at": format_upload_date(info.get("upload_date")),
                         "duration": info.get("duration") or 0
                     }
         except Exception as dir_err:

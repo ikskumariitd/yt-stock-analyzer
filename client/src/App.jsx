@@ -65,7 +65,7 @@ export default function App() {
     try {
       if (!isSilent) setLoading(true);
       const [recsData, consensusList, statsData, channelsData] = await Promise.all([
-        fetchRecommendations({ search, sentiment, channel, days, stanceChange, limit: 100 }),
+        fetchRecommendations({ search, sentiment, channel, days, stanceChange, sortBy, limit: 100 }),
         fetchConsensus({ search, sentiment, channel, days, stanceChange, sortBy }),
         fetchStats(),
         fetchChannels()

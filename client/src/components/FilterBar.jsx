@@ -27,11 +27,18 @@ const STANCE_OPTIONS = [
   { id: 'REITERATED', label: '🔁 Reiterated Stances' },
 ];
 
-const SORT_OPTIONS = [
+const SORT_OPTIONS_CONSENSUS = [
   { id: 'mentions', label: '👥 Most Recommended' },
   { id: 'date', label: '📅 Newest Video Date' },
   { id: 'bullish', label: '🚀 Highest Bullish Bias' },
   { id: 'ticker', label: '🔤 Ticker A-Z' },
+];
+
+const SORT_OPTIONS_FEED = [
+  { id: 'date', label: '📅 Newest Upload Date' },
+  { id: 'bullish', label: '🚀 Highest Bullish Bias' },
+  { id: 'ticker', label: '🔤 Ticker A-Z' },
+  { id: 'mentions', label: '👥 Creator Frequency' },
 ];
 
 export default function FilterBar({
@@ -52,6 +59,7 @@ export default function FilterBar({
   viewMode = 'consensus',
   setViewMode
 }) {
+  const currentSortOptions = viewMode === 'individual' ? SORT_OPTIONS_FEED : SORT_OPTIONS_CONSENSUS;
   return (
     <div className="glass-panel" style={{ padding: '18px 20px', marginBottom: '24px' }}>
       {/* Row 1: Search, View Mode, Quick Stats */}
@@ -132,7 +140,10 @@ export default function FilterBar({
           gap: '2px'
         }}>
           <button
-            onClick={() => setViewMode && setViewMode('consensus')}
+            onClick={() => {
+              if (setViewMode) setViewMode('consensus');
+              if (setSortBy && sortBy === 'date') setSortBy('mentions');
+            }}
             style={{
               padding: '7px 14px',
               borderRadius: '6px',
@@ -149,7 +160,10 @@ export default function FilterBar({
             🏛️ Consensus (Clubbed)
           </button>
           <button
-            onClick={() => setViewMode && setViewMode('individual')}
+            onClick={() => {
+              if (setViewMode) setViewMode('individual');
+              if (setSortBy && sortBy === 'mentions') setSortBy('date');
+            }}
             style={{
               padding: '7px 14px',
               borderRadius: '6px',
@@ -256,7 +270,7 @@ export default function FilterBar({
               cursor: 'pointer'
             }}
           >
-            {SORT_OPTIONS.map(sOpt => (
+            {currentSortOptions.map(sOpt => (
               <option key={sOpt.id} value={sOpt.id}>
                 {sOpt.label}
               </option>

@@ -1,5 +1,6 @@
 import React from 'react';
-import { ExternalLink, Clock, ShieldAlert, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { ExternalLink, Clock, ShieldAlert, ArrowUpRight, CheckCircle2, Calendar } from 'lucide-react';
+import { formatSingaporeDate } from '../utils/timeUtils';
 
 export default function StockCard({ recommendation, onOpenDetail }) {
   const r = recommendation;
@@ -116,7 +117,7 @@ export default function StockCard({ recommendation, onOpenDetail }) {
         </div>
 
         {/* Strategy Type Pill & Stance Details */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
           {r.strategy_type && (
             <span style={{
               fontSize: '0.7rem',
@@ -137,6 +138,27 @@ export default function StockCard({ recommendation, onOpenDetail }) {
             </span>
           )}
         </div>
+
+        {/* Video Title Context */}
+        {r.video_title && (
+          <div
+            style={{
+              fontSize: '0.75rem',
+              color: 'var(--text-secondary)',
+              marginBottom: '12px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}
+            title={r.video_title}
+          >
+            <span style={{ flexShrink: 0 }}>{r.platform === 'instagram' ? '📷' : '🎬'}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.video_title}</span>
+          </div>
+        )}
 
         {/* Key Price Levels Box */}
         <div style={{
@@ -192,13 +214,15 @@ export default function StockCard({ recommendation, onOpenDetail }) {
         )}
       </div>
 
-      {/* Footer Info: Channel + Video Link */}
+      {/* Footer Info: Channel + Video Upload Date + Video Link */}
       <div style={{
         paddingTop: '12px',
         borderTop: '1px solid var(--border-subtle)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '6px',
         fontSize: '0.75rem',
         color: 'var(--text-muted)'
       }}>
@@ -218,11 +242,24 @@ export default function StockCard({ recommendation, onOpenDetail }) {
             {r.channel_name ? r.channel_name[0].toUpperCase() : 'Y'}
           </div>
           <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-            {r.channel_name || 'YouTube Creator'}
+            {r.channel_name || 'Creator'}
           </span>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {(r.published_at || r.created_at) && (
+            <span style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '3px',
+              fontSize: '0.72rem',
+              color: 'var(--text-secondary)',
+              fontWeight: '600'
+            }}>
+              <Calendar size={11} color="var(--color-brand)" /> {formatSingaporeDate(r.published_at || r.created_at)}
+            </span>
+          )}
+
           {r.timestamp_reference && (
             <span style={{
               display: 'flex',
@@ -251,7 +288,7 @@ export default function StockCard({ recommendation, onOpenDetail }) {
               }}
               onMouseOver={e => e.currentTarget.style.color = 'var(--color-brand)'}
               onMouseOut={e => e.currentTarget.style.color = 'var(--text-muted)'}
-              title="Watch segment on YouTube"
+              title="Watch segment"
             >
               <ExternalLink size={14} />
             </a>
